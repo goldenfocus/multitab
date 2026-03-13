@@ -200,11 +200,17 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 
 		icon := agentIcon(agent.Status, tick)
 
+		// Truncate long names to fit table layout
+		displayName := agent.Name
+		if len(displayName) > 22 {
+			displayName = displayName[:19] + "..."
+		}
+
 		var name string
 		if isSelected {
-			name = agentNameSelectedStyle.Render(agent.Name)
+			name = agentNameSelectedStyle.Render(displayName)
 		} else {
-			name = agentNameStyle.Render(agent.Name)
+			name = agentNameStyle.Render(displayName)
 		}
 
 		status := renderStatusBadge(agent.Status, tick)
