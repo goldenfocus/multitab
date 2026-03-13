@@ -89,13 +89,13 @@ func renderLogView(m Model) string {
 	// Scroll indicator
 	pct := m.viewport.ScrollPercent()
 	scrollInfo := statusIndicatorStyle.Render(
-		fmt.Sprintf("  %d%% \u2502 %d lines", int(pct*100), strings.Count(m.logContent, "\n")+1))
+		fmt.Sprintf("  %d%% │ %d lines", int(pct*100), strings.Count(m.logContent, "\n")+1))
 	sections = append(sections, scrollInfo)
 
 	// Footer
 	keys := []struct{ key, label string }{
 		{"esc", "back"},
-		{"\u2191\u2193", "scroll"},
+		{"↑↓", "scroll"},
 		{"g/G", "top/bottom"},
 		{"q", "quit"},
 	}
@@ -103,11 +103,11 @@ func renderLogView(m Model) string {
 	for _, k := range keys {
 		parts = append(parts, footerKeyStyle.Render(k.key)+" "+footerStyle.Render(k.label))
 	}
-	sections = append(sections, "\n  "+strings.Join(parts, "  "+separatorStyle.Render("\u2502")+"  "))
+	sections = append(sections, "\n  "+strings.Join(parts, "  "))
 
 	content := strings.Join(sections, "\n")
 	if m.width > 60 {
-		maxWidth := clampInt(m.width-4, 60, 76)
+		maxWidth := clampInt(m.width-4, 60, 80)
 		return frameBorder.Width(maxWidth).Render(content)
 	}
 	return content

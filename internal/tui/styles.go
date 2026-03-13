@@ -2,69 +2,77 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Heavy border set — the spaceship signature
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ─────────────────────────────────────────────────
+// Thin rounded border — modern, lightweight
+// ─────────────────────────────────────────────────
 
-var heavyBorder = lipgloss.Border{
-	Top:         "\u2501",
-	Bottom:      "\u2501",
-	Left:        "\u2503",
-	Right:       "\u2503",
-	TopLeft:     "\u250f",
-	TopRight:    "\u2513",
-	BottomLeft:  "\u2517",
-	BottomRight: "\u251b",
-}
-
-var heavyRoundBorder = lipgloss.Border{
-	Top:         "\u2501",
-	Bottom:      "\u2501",
-	Left:        "\u2503",
-	Right:       "\u2503",
-	TopLeft:     "\u256d",
-	TopRight:    "\u256e",
-	BottomLeft:  "\u2570",
-	BottomRight: "\u256f",
+var thinRoundBorder = lipgloss.Border{
+	Top:         "─",
+	Bottom:      "─",
+	Left:        "│",
+	Right:       "│",
+	TopLeft:     "╭",
+	TopRight:    "╮",
+	BottomLeft:  "╰",
+	BottomRight: "╯",
 }
 
 var (
-	// ── Palette ──────────────────────────────────────
-	pink       = lipgloss.Color("#e740a9")
-	hotPink    = lipgloss.Color("#ff1493")
-	cyan       = lipgloss.Color("#00d4ff")
-	green      = lipgloss.Color("#00ff88")
-	yellow     = lipgloss.Color("#ffcc00")
-	red        = lipgloss.Color("#ff4444")
-	orange     = lipgloss.Color("#ff8844")
-	dimGray    = lipgloss.Color("#333333")
-	midGray    = lipgloss.Color("#555555")
-	lightGray  = lipgloss.Color("#888888")
-	brightGray = lipgloss.Color("#cccccc")
-	white      = lipgloss.Color("#ffffff")
+	// ── Palette (matches multitab.io website) ────
+	cyan   = lipgloss.Color("#00f0ff")
+	violet = lipgloss.Color("#8b5cf6")
+	pink   = lipgloss.Color("#f472b6")
+	green  = lipgloss.Color("#4ade80")
+	yellow = lipgloss.Color("#fbbf24")
+	red    = lipgloss.Color("#f87171")
+	orange = lipgloss.Color("#fb923c")
 
-	// ── Outer frame (the ship hull) ──────────────────
+	// Grays — graduated for depth
+	bgDark    = lipgloss.Color("#0a0a14")
+	dimGray   = lipgloss.Color("#1e1e2e")
+	midGray   = lipgloss.Color("#475569")
+	lightGray = lipgloss.Color("#94a3b8")
+	softWhite = lipgloss.Color("#c8d6e5")
+	white     = lipgloss.Color("#e2e8f0")
+
+	// ── Outer frame ─────────────────────────────
 	frameBorder = lipgloss.NewStyle().
-			Border(heavyBorder).
-			BorderForeground(cyan).
+			Border(thinRoundBorder).
+			BorderForeground(lipgloss.Color("#1a2a3a")).
 			Padding(1, 2)
 
-	// ── Banner ───────────────────────────────────────
+	// ── Banner ──────────────────────────────────
 	bannerStyle = lipgloss.NewStyle().
 			Foreground(cyan).
 			Bold(true)
 
 	bannerAccentStyle = lipgloss.NewStyle().
-				Foreground(hotPink).
+				Foreground(violet).
 				Bold(true)
 
 	subtitleStyle = lipgloss.NewStyle().
 			Foreground(midGray)
 
-	// ── Agent table ──────────────────────────────────
+	// ── Section titles ──────────────────────────
+	sectionTitleStyle = lipgloss.NewStyle().
+				Foreground(cyan).
+				Bold(true)
+
+	headerStyle = lipgloss.NewStyle().
+			Foreground(midGray).
+			Bold(true)
+
+	separatorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#1e293b"))
+
+	cursorStyle = lipgloss.NewStyle().
+			Foreground(cyan).
+			Bold(true)
+
+	// ── Agent table ─────────────────────────────
 	agentNameStyle = lipgloss.NewStyle().
 			Width(24).
-			Foreground(white)
+			Foreground(softWhite)
 
 	agentNameSelectedStyle = lipgloss.NewStyle().
 				Width(24).
@@ -76,44 +84,28 @@ var (
 				Bold(true)
 
 	statusWorkingStyle = lipgloss.NewStyle().
-				Foreground(yellow).
+				Foreground(violet).
 				Bold(true)
 
 	statusStaleStyle = lipgloss.NewStyle().
-			Foreground(orange).
-			Bold(true)
+				Foreground(orange)
 
 	statusAbandonedStyle = lipgloss.NewStyle().
 				Foreground(red)
 
 	statusIdleStyle = lipgloss.NewStyle().
-			Foreground(dimGray)
+			Foreground(midGray)
 
-	headerStyle = lipgloss.NewStyle().
-			Foreground(lightGray).
-			Bold(true)
-
-	sectionTitleStyle = lipgloss.NewStyle().
-				Foreground(cyan).
-				Bold(true)
-
-	separatorStyle = lipgloss.NewStyle().
-			Foreground(dimGray)
-
-	cursorStyle = lipgloss.NewStyle().
-			Foreground(cyan).
-			Bold(true)
-
-	// ── Panels ───────────────────────────────────────
+	// ── Panels ──────────────────────────────────
 	panelStyle = lipgloss.NewStyle().
-			Border(heavyRoundBorder).
-			BorderForeground(dimGray).
+			Border(thinRoundBorder).
+			BorderForeground(lipgloss.Color("#1e293b")).
 			Padding(0, 1)
 
 	panelActiveStyle = lipgloss.NewStyle().
-			Border(heavyRoundBorder).
-			BorderForeground(cyan).
-			Padding(0, 1)
+				Border(thinRoundBorder).
+				BorderForeground(lipgloss.Color("#1e3a4a")).
+				Padding(0, 1)
 
 	panelTitleStyle = lipgloss.NewStyle().
 			Foreground(cyan).
@@ -123,24 +115,24 @@ var (
 			Foreground(lightGray)
 
 	commitHashStyle = lipgloss.NewStyle().
-			Foreground(yellow)
+			Foreground(violet)
 
-	// ── Intel ────────────────────────────────────────
+	// ── Intel ───────────────────────────────────
 	intelLabelStyle = lipgloss.NewStyle().
 			Foreground(midGray).
-			Width(12)
+			Width(14)
 
 	intelValueStyle = lipgloss.NewStyle().
-			Foreground(brightGray)
+			Foreground(softWhite)
 
 	intelFileStyle = lipgloss.NewStyle().
 			Foreground(lightGray)
 
 	intelHeaderStyle = lipgloss.NewStyle().
-			Foreground(pink).
-			Bold(true)
+				Foreground(pink).
+				Bold(true)
 
-	// ── Status bar ───────────────────────────────────
+	// ── Status bar ──────────────────────────────
 	statusOkStyle = lipgloss.NewStyle().
 			Foreground(green)
 
@@ -148,25 +140,25 @@ var (
 			Foreground(yellow)
 
 	statusIndicatorStyle = lipgloss.NewStyle().
-				Foreground(dimGray)
+				Foreground(midGray)
 
-	// ── Spawn prompt ─────────────────────────────────
+	// ── Spawn prompt ────────────────────────────
 	spawnPromptStyle = lipgloss.NewStyle().
-			Foreground(cyan).
-			Bold(true)
+				Foreground(cyan).
+				Bold(true)
 
 	spawnHintStyle = lipgloss.NewStyle().
 			Foreground(midGray)
 
-	// ── Footer ───────────────────────────────────────
+	// ── Footer ──────────────────────────────────
 	footerStyle = lipgloss.NewStyle().
 			Foreground(midGray)
 
 	footerKeyStyle = lipgloss.NewStyle().
-			Foreground(pink).
+			Foreground(violet).
 			Bold(true)
 
-	// ── Push progress ────────────────────────────────
+	// ── Push progress ───────────────────────────
 	pushStepActiveStyle = lipgloss.NewStyle().
 				Foreground(cyan).
 				Bold(true)
@@ -175,9 +167,9 @@ var (
 				Foreground(green)
 
 	pushStepPendingStyle = lipgloss.NewStyle().
-				Foreground(dimGray)
+				Foreground(lipgloss.Color("#1e293b"))
 
-	// ── Errors ───────────────────────────────────────
+	// ── Errors ──────────────────────────────────
 	errorStyle = lipgloss.NewStyle().
 			Foreground(red).
 			Bold(true)
@@ -185,4 +177,28 @@ var (
 	successStyle = lipgloss.NewStyle().
 			Foreground(green).
 			Bold(true)
+
+	// ── Status bar (bottom) ─────────────────────
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(midGray).
+			Background(lipgloss.Color("#0e0e1a")).
+			Padding(0, 1)
+
+	statusBarActiveStyle = lipgloss.NewStyle().
+				Foreground(green).
+				Background(lipgloss.Color("#0e0e1a"))
+
+	statusBarDimStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#2a2a3a")).
+				Background(lipgloss.Color("#0e0e1a"))
+
+	// ── Queue bar styles ────────────────────────
+	queueFilledStyle = lipgloss.NewStyle().
+				Foreground(cyan)
+
+	queueEmptyStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#1a1a2e"))
+
+	queueShimmerStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#2a3a4a"))
 )
