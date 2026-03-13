@@ -4,7 +4,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/vibeyang/multitab/internal/git"
 	"github.com/vibeyang/multitab/internal/queue"
 )
 
@@ -19,10 +18,12 @@ type Model struct {
 	quitting bool
 
 	// Push state
-	pushing   bool
-	pushStep  git.PushStep
-	pushErr   error
-	pushDone  bool
+	pushing     bool
+	push        pushState
+	pushErr     error
+	pushDone    bool
+	pushElapsed time.Duration
+	spinFrame   int // animation frame counter
 
 	// View toggles
 	showDiff bool
@@ -36,11 +37,6 @@ type refreshMsg struct {
 }
 
 type tickMsg time.Time
-
-type pushStepMsg struct {
-	step git.PushStep
-	err  error
-}
 
 // NewModel creates the initial model.
 func NewModel(repoRoot, buildCmd string) Model {

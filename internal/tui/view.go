@@ -3,10 +3,12 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/vibeyang/multitab/internal/git"
 )
+
+var spinnerFrames = []string{"\u280b", "\u2819", "\u2839", "\u2838", "\u283c", "\u2834", "\u2826", "\u2827", "\u2807", "\u280f"}
 
 // View renders the spaceship dashboard.
 func (m Model) View() string {
@@ -43,21 +45,22 @@ func (m Model) View() string {
 
 	// Push progress (if pushing)
 	if m.pushing {
-		sections = append(sections, renderPushProgress(m.pushStep))
+		sections = append(sections, renderLivePush(m))
 	}
 
 	// Push error
-	if m.pushErr != nil {
+	if m.pushErr != nil && !m.pushing {
 		sections = append(sections, errorStyle.Render(fmt.Sprintf("  Push failed: %v", m.pushErr)))
 	}
 
 	// Push success
 	if m.pushDone {
-		sections = append(sections, statusOkStyle.Render("  Push complete!"))
+		sections = append(sections,
+			statusOkStyle.Render(fmt.Sprintf("  Pushed in %s", m.pushElapsed.Round(time.Millisecond))))
 	}
 
 	// Footer
-	sections = append(sections, renderFooter())
+	sections = append(sections, renderFooter(m.pushing))
 
 	content := strings.Join(sections, "\n")
 
@@ -91,11 +94,11 @@ func renderAgentTable(agents []git.Agent) string {
 		var status string
 		switch agent.Status {
 		case git.StatusStaged:
-			status = statusStagedStyle.Render(fmt.Sprintf("%-14s", "STAGED"))
+			status = statusStagedStyle.Render(fmt.Sprintf("%-14s", "\u2713 STAGED"))
 		case git.StatusWorking:
-			status = statusWorkingStyle.Render(fmt.Sprintf("%-14s", "WORKING"))
+			status = statusWorkingStyle.Render(fmt.Sprintf("%-14s", "\u2022 WORKING"))
 		default:
-			status = statusIdleStyle.Render(fmt.Sprintf("%-14s", "IDLE"))
+			status = statusIdleStyle.Render(fmt.Sprintf("%-14s", "\u25cb IDLE"))
 		}
 
 		commits := fmt.Sprintf("%-10d", agent.Commits)
@@ -124,8 +127,9 @@ func renderQueueBar(ready, total int) string {
 		pct = (ready * 100) / total
 	}
 
-	bar := strings.Repeat("\u2588", filled) + strings.Repeat("\u2591", barWidth-filled)
-	barStyled := statusOkStyle.Render(bar[:filled]) + statusIdleStyle.Render(bar[filled:])
+	filledBar := strings.Repeat("\u2588", filled)
+	emptyBar := strings.Repeat("\u2591", barWidth-filled)
+	barStyled := statusOkStyle.Render(filledBar) + statusIdleStyle.Render(emptyBar)
 
 	return fmt.Sprintf("\n%s\n  %s  %d%% ready\n",
 		headerStyle.Render(label),
@@ -137,7 +141,7 @@ func renderQueueBar(ready, total int) string {
 func renderCommitsPanel(commits []git.StagedCommit) string {
 	var lines []string
 	for _, c := range commits {
-		lines = append(lines, commitStyle.Render(c.Message))
+		lines = append(lines, commitStyle.Render("  "+c.Message))
 	}
 	content := strings.Join(lines, "\n")
 
@@ -152,7 +156,7 @@ func renderStatusBar(m Model) string {
 	// Conflicts
 	if len(m.state.Conflicts) > 0 {
 		items = append(items,
-			statusWarnStyle.Render(fmt.Sprintf("  CONFLICTS: %d detected", len(m.state.Conflicts))))
+			statusWarnStyle.Render(fmt.Sprintf("  CONFLICTS: %d file(s) touched by multiple agents", len(m.state.Conflicts))))
 	} else {
 		items = append(items,
 			statusOkStyle.Render("  CONFLICTS: None detected"))
@@ -173,44 +177,63 @@ func renderStatusBar(m Model) string {
 	return strings.Join(items, "\n")
 }
 
-func renderPushProgress(step git.PushStep) string {
-	steps := []git.PushStep{git.StepFetch, git.StepRebase, git.StepBuild, git.StepPush, git.StepVerify}
+func renderLivePush(m Model) string {
 	var lines []string
 
-	for _, s := range steps {
-		var style lipgloss.Style
-		prefix := "  "
-		switch {
-		case s < step:
-			style = pushStepDoneStyle
-			prefix = "  \u2714 "
-		case s == step:
-			style = pushStepActiveStyle
-			prefix = "  \u25b6 "
+	elapsed := time.Since(m.push.startAt).Round(time.Millisecond)
+	spinner := spinnerFrames[m.spinFrame%len(spinnerFrames)]
+
+	for _, s := range m.push.steps {
+		var line string
+		switch s.status {
+		case stepDone:
+			line = pushStepDoneStyle.Render(
+				fmt.Sprintf("  \u2714 %s  %s", s.step, formatDuration(s.elapsed)))
+		case stepRunning:
+			line = pushStepActiveStyle.Render(
+				fmt.Sprintf("  %s %s", spinner, s.step))
+		case stepFailed:
+			line = errorStyle.Render(
+				fmt.Sprintf("  \u2718 %s  FAILED", s.step))
 		default:
-			style = pushStepPendingStyle
-			prefix = "    "
+			line = pushStepPendingStyle.Render(
+				fmt.Sprintf("    %s", s.step))
 		}
-		lines = append(lines, style.Render(prefix+s.String()))
+		lines = append(lines, line)
 	}
 
+	header := pushStepActiveStyle.Render(fmt.Sprintf(" PUSHING  %s ", elapsed))
+
 	return "\n" + panelStyle.Render(
-		pushStepActiveStyle.Render(" PUSHING ") + "\n" + strings.Join(lines, "\n"),
+		header + "\n" + strings.Join(lines, "\n"),
 	)
 }
 
-func renderFooter() string {
-	keys := []struct{ key, label string }{
-		{"P", "Push"},
-		{"D", "Diff"},
-		{"R", "Refresh"},
-		{"L", "Log"},
-		{"Q", "Quit"},
+func renderFooter(pushing bool) string {
+	type key struct{ key, label string }
+
+	var keys []key
+	if pushing {
+		keys = []key{
+			{"", "pushing..."},
+		}
+	} else {
+		keys = []key{
+			{"P", "Push"},
+			{"D", "Diff"},
+			{"R", "Refresh"},
+			{"L", "Log"},
+			{"Q", "Quit"},
+		}
 	}
 
 	var parts []string
 	for _, k := range keys {
-		parts = append(parts, "["+footerKeyStyle.Render(k.key)+"]"+k.label)
+		if k.key == "" {
+			parts = append(parts, pushStepActiveStyle.Render(k.label))
+		} else {
+			parts = append(parts, "["+footerKeyStyle.Render(k.key)+"]"+k.label)
+		}
 	}
 
 	return "\n" + footerStyle.Render("  "+strings.Join(parts, "  "))
@@ -219,12 +242,26 @@ func renderFooter() string {
 func agentIcon(status git.AgentStatus) string {
 	switch status {
 	case git.StatusStaged:
-		return "\u25cf" // filled circle
+		return "\u25cf"
 	case git.StatusWorking:
-		return "\u25cf" // filled circle
-	case git.StatusIdle:
-		return "\u25cb" // empty circle
+		return "\u25cf"
 	default:
 		return "\u25cb"
 	}
 }
+
+func formatDuration(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	return fmt.Sprintf("%.1fs", d.Seconds())
+}
+
+// min returns the smaller of two ints.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+

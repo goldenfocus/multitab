@@ -12,7 +12,6 @@ var (
 	dimGray   = lipgloss.Color("#555555")
 	lightGray = lipgloss.Color("#aaaaaa")
 	white     = lipgloss.Color("#ffffff")
-	bgDark    = lipgloss.Color("#111111")
 
 	// Border style for the main frame
 	frameBorder = lipgloss.NewStyle().
@@ -71,18 +70,6 @@ var (
 
 	statusWarnStyle = lipgloss.NewStyle().
 			Foreground(yellow)
-
-	statusErrorStyle = lipgloss.NewStyle().
-			Foreground(red)
-
-	// Progress bar
-	progressFilledStyle = lipgloss.NewStyle().
-				Foreground(green).
-				Background(green)
-
-	progressEmptyStyle = lipgloss.NewStyle().
-				Foreground(dimGray).
-				Background(dimGray)
 
 	// Footer
 	footerStyle = lipgloss.NewStyle().
