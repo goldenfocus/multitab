@@ -3,10 +3,10 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 // ─────────────────────────────────────────────────
-// Thin rounded border — modern, lightweight
+// Rounded border — visible but not heavy
 // ─────────────────────────────────────────────────
 
-var thinRoundBorder = lipgloss.Border{
+var roundBorder = lipgloss.Border{
 	Top:         "─",
 	Bottom:      "─",
 	Left:        "│",
@@ -29,16 +29,16 @@ var (
 
 	// Grays — graduated for depth
 	bgDark    = lipgloss.Color("#0a0a14")
-	dimGray   = lipgloss.Color("#1e1e2e")
-	midGray   = lipgloss.Color("#475569")
+	dimGray   = lipgloss.Color("#2a2a3e")
+	midGray   = lipgloss.Color("#64748b")
 	lightGray = lipgloss.Color("#94a3b8")
-	softWhite = lipgloss.Color("#c8d6e5")
+	softWhite = lipgloss.Color("#cbd5e1")
 	white     = lipgloss.Color("#e2e8f0")
 
-	// ── Outer frame ─────────────────────────────
+	// ── Outer frame (the ship hull — VISIBLE) ───
 	frameBorder = lipgloss.NewStyle().
-			Border(thinRoundBorder).
-			BorderForeground(lipgloss.Color("#1a2a3a")).
+			Border(roundBorder).
+			BorderForeground(cyan).
 			Padding(1, 2)
 
 	// ── Banner ──────────────────────────────────
@@ -63,7 +63,7 @@ var (
 			Bold(true)
 
 	separatorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#1e293b"))
+			Foreground(lipgloss.Color("#334155"))
 
 	cursorStyle = lipgloss.NewStyle().
 			Foreground(cyan).
@@ -84,7 +84,7 @@ var (
 				Bold(true)
 
 	statusWorkingStyle = lipgloss.NewStyle().
-				Foreground(violet).
+				Foreground(yellow).
 				Bold(true)
 
 	statusStaleStyle = lipgloss.NewStyle().
@@ -98,13 +98,13 @@ var (
 
 	// ── Panels ──────────────────────────────────
 	panelStyle = lipgloss.NewStyle().
-			Border(thinRoundBorder).
-			BorderForeground(lipgloss.Color("#1e293b")).
+			Border(roundBorder).
+			BorderForeground(lipgloss.Color("#334155")).
 			Padding(0, 1)
 
 	panelActiveStyle = lipgloss.NewStyle().
-				Border(thinRoundBorder).
-				BorderForeground(lipgloss.Color("#1e3a4a")).
+				Border(roundBorder).
+				BorderForeground(cyan).
 				Padding(0, 1)
 
 	panelTitleStyle = lipgloss.NewStyle().
@@ -155,7 +155,7 @@ var (
 			Foreground(midGray)
 
 	footerKeyStyle = lipgloss.NewStyle().
-			Foreground(violet).
+			Foreground(pink).
 			Bold(true)
 
 	// ── Push progress ───────────────────────────
@@ -167,7 +167,7 @@ var (
 				Foreground(green)
 
 	pushStepPendingStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#1e293b"))
+				Foreground(dimGray)
 
 	// ── Errors ──────────────────────────────────
 	errorStyle = lipgloss.NewStyle().
@@ -178,27 +178,24 @@ var (
 			Foreground(green).
 			Bold(true)
 
-	// ── Status bar (bottom) ─────────────────────
+	// ── Status bar (bottom instrument panel) ────
 	statusBarStyle = lipgloss.NewStyle().
-			Foreground(midGray).
-			Background(lipgloss.Color("#0e0e1a")).
-			Padding(0, 1)
+			Foreground(lightGray)
 
 	statusBarActiveStyle = lipgloss.NewStyle().
 				Foreground(green).
-				Background(lipgloss.Color("#0e0e1a"))
+				Bold(true)
 
 	statusBarDimStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#2a2a3a")).
-				Background(lipgloss.Color("#0e0e1a"))
+				Foreground(dimGray)
 
 	// ── Queue bar styles ────────────────────────
 	queueFilledStyle = lipgloss.NewStyle().
 				Foreground(cyan)
 
 	queueEmptyStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#1a1a2e"))
+			Foreground(dimGray)
 
 	queueShimmerStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#2a3a4a"))
+				Foreground(lipgloss.Color("#3a4a5a"))
 )

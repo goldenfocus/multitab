@@ -178,12 +178,15 @@ func (m Model) renderSpawnView() string {
 // ─────────────────────────────────────────────────
 
 func renderBanner(tick int) string {
-	// Subtle animated accent — breathing dots
-	frames := []string{"◆ ◇ ◆", "◇ ◆ ◇", "◆ ◆ ◇", "◇ ◇ ◆"}
-	accent := bannerAccentStyle.Render(frames[tick%len(frames)])
+	// Pulsing accent diamonds
+	frames := []string{"◆◇◆", "◇◆◇", "◆◆◇", "◇◇◆"}
+	left := bannerAccentStyle.Render(frames[tick%len(frames)])
+	right := bannerAccentStyle.Render(frames[(tick+2)%len(frames)])
 
-	title := bannerStyle.Render("MULTITAB")
-	return fmt.Sprintf("  %s  %s", title, accent)
+	title := bannerStyle.Render(" M U L T I T A B ")
+	sub := subtitleStyle.Render("multi-agent command center")
+
+	return fmt.Sprintf("\n  %s%s%s\n  %s", left, title, right, sub)
 }
 
 // ─────────────────────────────────────────────────
@@ -210,11 +213,15 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 
 	var b strings.Builder
 
+	// Section header with ruled line
+	b.WriteString(separatorStyle.Render("  ── "))
+	b.WriteString(sectionTitleStyle.Render("AGENTS"))
+	b.WriteString(separatorStyle.Render(" " + strings.Repeat("─", 50)))
+	b.WriteString("\n\n")
+
 	// Column headers
-	header := fmt.Sprintf("  %-28s %-14s %8s %6s", "AGENT", "STATUS", "COMMITS", "FILES")
+	header := fmt.Sprintf("    %-26s %-14s %8s %6s", "", "STATUS", "COMMITS", "FILES")
 	b.WriteString(headerStyle.Render(header))
-	b.WriteString("\n")
-	b.WriteString(separatorStyle.Render("  " + strings.Repeat("─", 60)))
 	b.WriteString("\n")
 
 	for i, agent := range agents {
@@ -481,11 +488,12 @@ func renderStatusBar(m Model) string {
 	// Last deploy
 	if m.state.LastPushHash != "" {
 		parts = append(parts, statusBarStyle.Render(
-			fmt.Sprintf("last deploy: %s — %s", m.state.LastPushTime, m.state.LastPushHash)))
+			fmt.Sprintf("deployed %s — %s", m.state.LastPushTime, m.state.LastPushHash)))
 	}
 
-	sep := statusBarDimStyle.Render(" │ ")
-	return "  " + strings.Join(parts, sep)
+	sep := statusBarDimStyle.Render(" · ")
+	line := separatorStyle.Render("  " + strings.Repeat("─", 56))
+	return line + "\n  " + strings.Join(parts, sep)
 }
 
 // ─────────────────────────────────────────────────
