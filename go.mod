@@ -1,4 +1,4 @@
-module github.com/vibeyang/multitab
+module github.com/goldenfocus/multitab
 
 go 1.26.1
 

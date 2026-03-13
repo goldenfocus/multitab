@@ -1,7 +1,7 @@
 package queue
 
 import (
-	"github.com/vibeyang/multitab/internal/git"
+	"github.com/goldenfocus/multitab/internal/git"
 )
 
 // Conflict represents two agents modifying the same file.

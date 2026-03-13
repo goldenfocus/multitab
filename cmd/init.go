@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/vibeyang/multitab/internal/detect"
+	"github.com/goldenfocus/multitab/internal/detect"
 )
 
 var initCmd = &cobra.Command{

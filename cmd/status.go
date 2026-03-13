@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/vibeyang/multitab/internal/git"
-	"github.com/vibeyang/multitab/internal/queue"
+	"github.com/goldenfocus/multitab/internal/git"
+	"github.com/goldenfocus/multitab/internal/queue"
 )
 
 var statusCmd = &cobra.Command{

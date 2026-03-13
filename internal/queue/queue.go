@@ -1,8 +1,8 @@
 package queue
 
 import (
-	"github.com/vibeyang/multitab/internal/detect"
-	"github.com/vibeyang/multitab/internal/git"
+	"github.com/goldenfocus/multitab/internal/detect"
+	"github.com/goldenfocus/multitab/internal/git"
 )
 
 // State holds the complete dashboard state.

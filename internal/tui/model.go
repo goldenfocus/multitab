@@ -4,7 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/vibeyang/multitab/internal/queue"
+	"github.com/goldenfocus/multitab/internal/queue"
 )
 
 // Model holds all TUI state.

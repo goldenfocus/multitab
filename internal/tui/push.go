@@ -4,7 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/vibeyang/multitab/internal/git"
+	"github.com/goldenfocus/multitab/internal/git"
 )
 
 // pushState tracks the full push sequence.

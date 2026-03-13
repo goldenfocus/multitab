@@ -5,8 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"github.com/vibeyang/multitab/internal/detect"
-	"github.com/vibeyang/multitab/internal/tui"
+	"github.com/goldenfocus/multitab/internal/detect"
+	"github.com/goldenfocus/multitab/internal/tui"
 )
 
 func runTUI(cmd *cobra.Command, args []string) error {

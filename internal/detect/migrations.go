@@ -3,7 +3,7 @@ package detect
 import (
 	"strings"
 
-	"github.com/vibeyang/multitab/internal/git"
+	"github.com/goldenfocus/multitab/internal/git"
 )
 
 // DetectMigrations checks if any agents have changes in supabase/migrations/.

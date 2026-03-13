@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/vibeyang/multitab/cmd"
+	"github.com/goldenfocus/multitab/cmd"
 )
 
 func main() {
