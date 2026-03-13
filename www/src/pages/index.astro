@@ -1,0 +1,1045 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Multitab — Multi-Agent Orchestrator">
+
+<!-- ═══════════════ PARTICLE CANVAS ═══════════════ -->
+<canvas id="constellation"></canvas>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<main>
+  <section class="hero">
+    <div class="hero-badge" aria-hidden="true">
+      <span class="badge-dot"></span>
+      <span class="badge-text">NOW IN ORBIT</span>
+    </div>
+
+    <h1 class="title" data-text="MULTITAB">
+      <span class="title-line">
+        {'MULTITAB'.split('').map((char, i) => (
+          <span class="title-char" style={`--i:${i}; --delay:${i * 0.08}s`}>{char}</span>
+        ))}
+      </span>
+    </h1>
+
+    <p class="subtitle">
+      <span class="typing-container">
+        <span id="typed-text"></span>
+        <span class="cursor">|</span>
+      </span>
+    </p>
+
+    <div class="hero-cta">
+      <a href="https://github.com/GoldenFocus/multitab" class="btn btn-primary" target="_blank" rel="noopener">
+        <span class="btn-icon">&#9656;</span>
+        Get Started
+      </a>
+      <button class="btn btn-ghost" id="scroll-btn">
+        See the magic
+        <span class="btn-arrow">&#8595;</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════ TERMINAL ═══════════════ -->
+  <section class="terminal-section" id="terminal-section">
+    <div class="terminal-window">
+      <div class="terminal-chrome">
+        <div class="terminal-tabs">
+          <button class="tab active" data-tab="0">
+            <span class="tab-dot" style="--dot-color: #00f0ff"></span>
+            Agent Alpha
+          </button>
+          <button class="tab" data-tab="1">
+            <span class="tab-dot" style="--dot-color: #8b5cf6"></span>
+            Agent Beta
+          </button>
+          <button class="tab" data-tab="2">
+            <span class="tab-dot" style="--dot-color: #f472b6"></span>
+            Agent Gamma
+          </button>
+        </div>
+        <div class="terminal-controls">
+          <span class="control"></span>
+          <span class="control"></span>
+          <span class="control"></span>
+        </div>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-pane active" data-pane="0">
+          <div class="term-lines" id="pane-0"></div>
+        </div>
+        <div class="terminal-pane" data-pane="1">
+          <div class="term-lines" id="pane-1"></div>
+        </div>
+        <div class="terminal-pane" data-pane="2">
+          <div class="term-lines" id="pane-2"></div>
+        </div>
+      </div>
+      <div class="terminal-status">
+        <span class="status-item"><span class="status-dot live"></span> 3 agents running</span>
+        <span class="status-item">multitab v0.1.0</span>
+        <span class="status-item">latency: <span id="latency">12ms</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FEATURES ═══════════════ -->
+  <section class="features-section">
+    <div class="features-grid">
+      <div class="feature-card" data-reveal>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <h3>Parallel by Default</h3>
+        <p>Launch multiple agents simultaneously. No waiting. No bottlenecks. Pure velocity.</p>
+      </div>
+      <div class="feature-card" data-reveal>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4"/>
+          </svg>
+        </div>
+        <h3>Terminal Native</h3>
+        <p>Beautiful TUI built with Bubble Tea. Your terminal is the cockpit.</p>
+      </div>
+      <div class="feature-card" data-reveal>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </div>
+        <h3>Orchestrate Anything</h3>
+        <p>Push, test, deploy, review — coordinate your AI fleet from one command.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ INSTALL ═══════════════ -->
+  <section class="install-section" data-reveal>
+    <div class="install-card">
+      <h2>Get in the cockpit</h2>
+      <div class="install-cmd" id="install-cmd">
+        <code><span class="prompt">$</span> go install github.com/vibeyang/multitab@latest</code>
+        <button class="copy-btn" id="copy-btn" aria-label="Copy install command">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+        </button>
+      </div>
+      <p class="install-sub">Or clone from <a href="https://github.com/GoldenFocus/multitab" target="_blank" rel="noopener">GitHub</a></p>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer>
+    <div class="footer-content">
+      <span class="footer-logo">MULTITAB</span>
+      <span class="footer-sep">/</span>
+      <a href="https://github.com/GoldenFocus/multitab" target="_blank" rel="noopener">GitHub</a>
+      <span class="footer-sep">/</span>
+      <span class="footer-copy">Built for the year 3000</span>
+    </div>
+  </footer>
+</main>
+
+</Layout>
+
+<!-- ═══════════════ STYLES ═══════════════ -->
+<style is:global>
+  :root {
+    --bg: #06060e;
+    --bg-card: rgba(12, 12, 24, 0.7);
+    --cyan: #00f0ff;
+    --violet: #8b5cf6;
+    --pink: #f472b6;
+    --green: #4ade80;
+    --text: #c8d6e5;
+    --text-dim: #475569;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Space Grotesk', sans-serif;
+    --glow-cyan: 0 0 20px rgba(0, 240, 255, 0.3), 0 0 60px rgba(0, 240, 255, 0.1);
+    --glow-violet: 0 0 20px rgba(139, 92, 246, 0.3), 0 0 60px rgba(139, 92, 246, 0.1);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--violet) var(--bg);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--cyan); text-decoration: none; transition: opacity 0.2s; }
+  a:hover { opacity: 0.8; }
+
+  /* ── Canvas ── */
+  #constellation {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--cyan);
+    background: rgba(0, 240, 255, 0.05);
+    animation: badge-in 0.8s ease-out both;
+    animation-delay: 0.3s;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  /* ── Title ── */
+  .title {
+    font-family: var(--font-mono);
+    font-size: clamp(3.5rem, 12vw, 10rem);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    position: relative;
+  }
+
+  .title-line {
+    display: inline-flex;
+  }
+
+  .title-char {
+    display: inline-block;
+    opacity: 0;
+    animation: char-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--delay);
+    background: linear-gradient(135deg, var(--cyan) 0%, var(--violet) 50%, var(--pink) 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation-name: char-in, gradient-shift;
+    animation-duration: 0.6s, 6s;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), ease-in-out;
+    animation-fill-mode: both, none;
+    animation-iteration-count: 1, infinite;
+    animation-delay: var(--delay), 0s;
+    filter: drop-shadow(0 0 30px rgba(0, 240, 255, 0.3));
+  }
+
+  .title::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    background: linear-gradient(135deg, var(--cyan), var(--violet), var(--pink));
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: blur(40px);
+    opacity: 0.4;
+    animation: gradient-shift 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* ── Subtitle / Typing ── */
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    color: var(--text-dim);
+    min-height: 1.8em;
+    opacity: 0;
+    animation: fade-in 0.5s ease both;
+    animation-delay: 1s;
+  }
+
+  .typing-container {
+    display: inline;
+  }
+
+  .cursor {
+    animation: blink 1s step-end infinite;
+    color: var(--cyan);
+    font-weight: 300;
+  }
+
+  /* ── CTA ── */
+  .hero-cta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    opacity: 0;
+    animation: fade-up 0.6s ease both;
+    animation-delay: 1.4s;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: none;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    color: var(--bg);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.5), 0 0 80px rgba(0, 240, 255, 0.2);
+    opacity: 1;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--violet);
+    color: var(--violet);
+    transform: translateY(-2px);
+  }
+
+  .btn-arrow {
+    transition: transform 0.3s;
+  }
+
+  .btn-ghost:hover .btn-arrow {
+    transform: translateY(3px);
+  }
+
+  /* ── Terminal ── */
+  .terminal-section {
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto 6rem;
+  }
+
+  .terminal-window {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(0, 240, 255, 0.05),
+      0 20px 60px rgba(0, 0, 0, 0.5),
+      var(--glow-cyan);
+    opacity: 0;
+    transform: translateY(40px) scale(0.97);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .terminal-window.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .terminal-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .terminal-tabs {
+    display: flex;
+    gap: 0;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .tab:hover { color: var(--text); }
+
+  .tab.active {
+    color: var(--cyan);
+    border-bottom-color: var(--cyan);
+    background: rgba(0, 240, 255, 0.03);
+  }
+
+  .tab[data-tab="1"].active {
+    color: var(--violet);
+    border-bottom-color: var(--violet);
+    background: rgba(139, 92, 246, 0.03);
+  }
+
+  .tab[data-tab="2"].active {
+    color: var(--pink);
+    border-bottom-color: var(--pink);
+    background: rgba(244, 114, 182, 0.03);
+  }
+
+  .tab-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dot-color);
+    opacity: 0.6;
+  }
+
+  .tab.active .tab-dot {
+    opacity: 1;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  .terminal-controls {
+    display: flex;
+    gap: 6px;
+  }
+
+  .control {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .control:nth-child(1):hover { background: #ff5f57; }
+  .control:nth-child(2):hover { background: #febc2e; }
+  .control:nth-child(3):hover { background: #28c840; }
+
+  .terminal-body {
+    padding: 1.25rem;
+    min-height: 280px;
+    position: relative;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.7;
+  }
+
+  .terminal-pane {
+    display: none;
+    animation: pane-in 0.3s ease;
+  }
+
+  .terminal-pane.active { display: block; }
+
+  .term-line {
+    opacity: 0;
+    animation: line-in 0.3s ease both;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .prompt-sym { color: var(--cyan); }
+  .cmd { color: var(--green); }
+  .dim { color: var(--text-dim); }
+  .highlight { color: var(--violet); }
+  .accent { color: var(--pink); }
+  .info { color: var(--cyan); opacity: 0.8; }
+
+  .terminal-status {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+  }
+
+  .status-dot.live {
+    background: var(--green);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  /* ── Features ── */
+  .features-section {
+    padding: 4rem 2rem 6rem;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    background: var(--bg-card);
+    backdrop-filter: blur(10px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  .feature-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .feature-card:hover {
+    border-color: rgba(0, 240, 255, 0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), var(--glow-cyan);
+  }
+
+  .feature-card:nth-child(2):hover {
+    border-color: rgba(139, 92, 246, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), var(--glow-violet);
+  }
+
+  .feature-card:nth-child(3):hover {
+    border-color: rgba(244, 114, 182, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(244, 114, 182, 0.3);
+  }
+
+  .feature-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 1rem;
+    color: var(--cyan);
+  }
+
+  .feature-card:nth-child(2) .feature-icon { color: var(--violet); }
+  .feature-card:nth-child(3) .feature-icon { color: var(--pink); }
+
+  .feature-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #fff;
+  }
+
+  .feature-card p {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ── Install ── */
+  .install-section {
+    padding: 2rem 2rem 6rem;
+    max-width: 650px;
+    margin: 0 auto;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .install-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .install-card {
+    text-align: center;
+  }
+
+  .install-card h2 {
+    font-family: var(--font-mono);
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .install-cmd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 10px;
+    background: rgba(0, 240, 255, 0.03);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    transition: all 0.3s;
+  }
+
+  .install-cmd:hover {
+    border-color: rgba(0, 240, 255, 0.3);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .install-cmd code {
+    color: var(--text);
+  }
+
+  .prompt { color: var(--cyan); margin-right: 0.5rem; }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: color 0.2s;
+  }
+
+  .copy-btn:hover { color: var(--cyan); }
+
+  .install-sub {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  /* ── Footer ── */
+  footer {
+    padding: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .footer-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .footer-logo {
+    letter-spacing: 0.15em;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+  }
+
+  .footer-sep { opacity: 0.3; }
+
+  /* ── Keyframes ── */
+  @keyframes char-in {
+    from { opacity: 0; transform: translateY(30px) rotateX(40deg); filter: blur(8px); }
+    to   { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); }
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes badge-in {
+    from { opacity: 0; transform: translateY(-10px) scale(0.9); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+    50%      { box-shadow: 0 0 0 4px transparent; opacity: 0.6; }
+  }
+
+  @keyframes line-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes pane-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .hero-cta { flex-direction: column; }
+    .terminal-tabs { overflow-x: auto; }
+    .tab { padding: 0.6rem 0.75rem; font-size: 0.7rem; }
+    .terminal-status { gap: 0.75rem; flex-wrap: wrap; }
+    .footer-content { flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script>
+  // ── Constellation Particle System ──
+  const canvas = document.getElementById('constellation') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  let w = canvas.width = window.innerWidth;
+  let h = canvas.height = window.innerHeight;
+  let mouse = { x: w / 2, y: h / 2 };
+
+  interface Particle {
+    x: number; y: number;
+    vx: number; vy: number;
+    r: number;
+    color: string;
+    alpha: number;
+  }
+
+  const COLORS = ['#00f0ff', '#8b5cf6', '#f472b6', '#4ade80'];
+  const COUNT = Math.min(100, Math.floor((w * h) / 12000));
+  const CONNECT_DIST = 150;
+  const MOUSE_DIST = 200;
+
+  const particles: Particle[] = Array.from({ length: COUNT }, () => ({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 1.5 + 0.5,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    alpha: Math.random() * 0.5 + 0.3,
+  }));
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, w, h);
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
+
+      // Mouse repulsion
+      const dx = p.x - mouse.x;
+      const dy = p.y - mouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < MOUSE_DIST) {
+        const force = (MOUSE_DIST - dist) / MOUSE_DIST * 0.02;
+        p.vx += dx * force;
+        p.vy += dy * force;
+      }
+
+      // Dampen velocity
+      p.vx *= 0.99;
+      p.vy *= 0.99;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.fill();
+
+      // Connect nearby particles
+      for (let j = i + 1; j < particles.length; j++) {
+        const p2 = particles[j];
+        const dx2 = p.x - p2.x;
+        const dy2 = p.y - p2.y;
+        const d = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+        if (d < CONNECT_DIST) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = p.color;
+          ctx.globalAlpha = (1 - d / CONNECT_DIST) * 0.15;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(drawParticles);
+  }
+
+  drawParticles();
+
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+
+  window.addEventListener('resize', () => {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  });
+
+  // ── Typing Effect ──
+  const phrases = [
+    'Run parallel agents from your terminal.',
+    'Orchestrate. Coordinate. Ship faster.',
+    'Your AI fleet, one command away.',
+    'The future of multi-agent workflows.',
+  ];
+
+  const typedEl = document.getElementById('typed-text')!;
+  let phraseIndex = 0;
+  let charIndex = 0;
+  let deleting = false;
+
+  function typeLoop() {
+    const current = phrases[phraseIndex];
+    if (!deleting) {
+      typedEl.textContent = current.slice(0, charIndex + 1);
+      charIndex++;
+      if (charIndex >= current.length) {
+        deleting = true;
+        setTimeout(typeLoop, 2500);
+        return;
+      }
+      setTimeout(typeLoop, 50 + Math.random() * 30);
+    } else {
+      typedEl.textContent = current.slice(0, charIndex);
+      charIndex--;
+      if (charIndex < 0) {
+        deleting = false;
+        charIndex = 0;
+        phraseIndex = (phraseIndex + 1) % phrases.length;
+        setTimeout(typeLoop, 400);
+        return;
+      }
+      setTimeout(typeLoop, 25);
+    }
+  }
+
+  setTimeout(typeLoop, 1200);
+
+  // ── Terminal Animation ──
+  // Terminal line content — using safe DOM construction
+  const terminalData: { lines: { parts: { cls: string; text: string }[] }[] }[] = [
+    {
+      lines: [
+        { parts: [{ cls: 'prompt-sym', text: '$ ' }, { cls: 'cmd', text: 'multitab push --parallel' }] },
+        { parts: [{ cls: 'dim', text: '[alpha] ' }, { cls: '', text: 'Scanning workspace...' }] },
+        { parts: [{ cls: 'dim', text: '[alpha] ' }, { cls: '', text: 'Found 12 modified files across 3 packages' }] },
+        { parts: [{ cls: 'dim', text: '[alpha] ' }, { cls: '', text: 'Running pre-push hooks... ' }, { cls: 'info', text: 'passed' }] },
+        { parts: [{ cls: 'dim', text: '[alpha] ' }, { cls: '', text: 'Building artifacts... ' }, { cls: 'highlight', text: '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591' }, { cls: '', text: ' 82%' }] },
+        { parts: [{ cls: 'dim', text: '[alpha] ' }, { cls: '', text: 'Build complete in ' }, { cls: 'info', text: '1.3s' }] },
+        { parts: [{ cls: 'dim', text: '[alpha] ' }, { cls: 'cmd', text: 'Push ready.' }, { cls: '', text: ' Waiting for fleet sync...' }] },
+      ],
+    },
+    {
+      lines: [
+        { parts: [{ cls: 'prompt-sym', text: '$ ' }, { cls: 'cmd', text: 'multitab test --coverage' }] },
+        { parts: [{ cls: 'dim', text: '[beta]  ' }, { cls: '', text: 'Discovering test suites...' }] },
+        { parts: [{ cls: 'dim', text: '[beta]  ' }, { cls: '', text: 'Running 847 tests across 24 packages' }] },
+        { parts: [{ cls: 'dim', text: '[beta]  ' }, { cls: 'info', text: 'pkg/core' }, { cls: '', text: '     ............ ' }, { cls: 'cmd', text: 'PASS' }, { cls: 'dim', text: ' 0.4s' }] },
+        { parts: [{ cls: 'dim', text: '[beta]  ' }, { cls: 'info', text: 'pkg/tui' }, { cls: '', text: '      ............ ' }, { cls: 'cmd', text: 'PASS' }, { cls: 'dim', text: ' 0.7s' }] },
+        { parts: [{ cls: 'dim', text: '[beta]  ' }, { cls: 'info', text: 'pkg/agent' }, { cls: '', text: '    ............ ' }, { cls: 'cmd', text: 'PASS' }, { cls: 'dim', text: ' 1.1s' }] },
+        { parts: [{ cls: 'dim', text: '[beta]  ' }, { cls: '', text: 'Coverage: ' }, { cls: 'highlight', text: '94.2%' }, { cls: '', text: ' \u2014 All suites passed' }] },
+      ],
+    },
+    {
+      lines: [
+        { parts: [{ cls: 'prompt-sym', text: '$ ' }, { cls: 'cmd', text: 'multitab review --ai' }] },
+        { parts: [{ cls: 'dim', text: '[gamma] ' }, { cls: '', text: 'Analyzing diff against ' }, { cls: 'info', text: 'main' }, { cls: '', text: '...' }] },
+        { parts: [{ cls: 'dim', text: '[gamma] ' }, { cls: '', text: 'Checking for security vulnerabilities...' }] },
+        { parts: [{ cls: 'dim', text: '[gamma] ' }, { cls: '', text: 'Reviewing code patterns + best practices...' }] },
+        { parts: [{ cls: 'dim', text: '[gamma] ' }, { cls: 'accent', text: '0 critical' }, { cls: '', text: ' | ' }, { cls: 'highlight', text: '2 suggestions' }, { cls: '', text: ' | ' }, { cls: 'cmd', text: '0 warnings' }] },
+        { parts: [{ cls: 'dim', text: '[gamma] ' }, { cls: '', text: 'Review complete. ' }, { cls: 'cmd', text: 'Ship it.' }] },
+      ],
+    },
+  ];
+
+  const tabs = document.querySelectorAll<HTMLButtonElement>('.tab');
+  const panes = document.querySelectorAll<HTMLElement>('.terminal-pane');
+  let activeTab = 0;
+  let autoSwitch: ReturnType<typeof setInterval>;
+
+  function switchTab(index: number) {
+    tabs.forEach(t => t.classList.remove('active'));
+    panes.forEach(p => p.classList.remove('active'));
+    tabs[index].classList.add('active');
+    panes[index].classList.add('active');
+    activeTab = index;
+
+    const paneEl = document.getElementById(`pane-${index}`)!;
+    if (paneEl.children.length === 0) {
+      animateLines(paneEl, terminalData[index].lines);
+    }
+  }
+
+  function animateLines(container: HTMLElement, lines: { parts: { cls: string; text: string }[] }[]) {
+    lines.forEach((line, i) => {
+      const div = document.createElement('div');
+      div.className = 'term-line';
+      div.style.animationDelay = `${i * 0.15}s`;
+
+      for (const part of line.parts) {
+        const span = document.createElement('span');
+        if (part.cls) span.className = part.cls;
+        span.textContent = part.text;
+        div.appendChild(span);
+      }
+
+      container.appendChild(div);
+    });
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      clearInterval(autoSwitch);
+      switchTab(Number(tab.dataset.tab));
+      startAutoSwitch();
+    });
+  });
+
+  function startAutoSwitch() {
+    autoSwitch = setInterval(() => {
+      switchTab((activeTab + 1) % 3);
+    }, 4000);
+  }
+
+  // ── Scroll Reveal ──
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.2 });
+
+  document.querySelectorAll('.terminal-window, .feature-card, .install-section').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Start terminal animation when terminal becomes visible
+  const termObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        switchTab(0);
+        startAutoSwitch();
+        termObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  termObserver.observe(document.querySelector('.terminal-window')!);
+
+  // ── Scroll Button ──
+  document.getElementById('scroll-btn')?.addEventListener('click', () => {
+    document.getElementById('terminal-section')?.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // ── Copy Button ──
+  document.getElementById('copy-btn')?.addEventListener('click', () => {
+    navigator.clipboard.writeText('go install github.com/vibeyang/multitab@latest');
+    const btn = document.getElementById('copy-btn')!;
+    btn.textContent = '\u2713';
+    btn.style.color = 'var(--green)';
+    btn.style.fontSize = '14px';
+    setTimeout(() => {
+      btn.textContent = '';
+      btn.style.color = '';
+      btn.style.fontSize = '';
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '2');
+      svg.setAttribute('width', '16');
+      svg.setAttribute('height', '16');
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', '9');
+      rect.setAttribute('y', '9');
+      rect.setAttribute('width', '13');
+      rect.setAttribute('height', '13');
+      rect.setAttribute('rx', '2');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1');
+      svg.appendChild(rect);
+      svg.appendChild(path);
+      btn.appendChild(svg);
+    }, 2000);
+  });
+
+  // ── Fake Latency Counter ──
+  const latencyEl = document.getElementById('latency')!;
+  setInterval(() => {
+    latencyEl.textContent = `${Math.floor(8 + Math.random() * 12)}ms`;
+  }, 2000);
+</script>

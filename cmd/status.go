@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/goldenfocus/multitab/internal/git"
@@ -25,26 +26,35 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Header
 	fmt.Println("MULTITAB STATUS")
-	fmt.Println("═══════════════════════════════════════════════════")
+	fmt.Println("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550")
 
 	if len(state.Agents) == 0 {
 		fmt.Println("No worktrees found.")
-		fmt.Println("Create worktrees with: git worktree add .claude/worktrees/<name> -b <name> origin/main")
 		return nil
 	}
 
-	// Agents
-	fmt.Printf("\n%-28s %-14s %-10s %-6s\n", "AGENT", "STATUS", "COMMITS", "FILES")
-	fmt.Println("────────────────────────────────────────────────────")
+	fmt.Printf("\n%-28s %-16s %-8s %-6s\n", "AGENT", "STATUS", "COMMITS", "FILES")
+	fmt.Println("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500")
+
 	for _, agent := range state.Agents {
 		icon := statusIcon(agent.Status)
-		fmt.Printf("%s %-26s %-14s %-10d %-6d\n",
+		fmt.Printf("%s %-26s %-16s %-8d %-6d\n",
 			icon, agent.Name, agent.Status, agent.Commits, agent.Files)
+
+		// Show intel for stale/abandoned
+		if agent.Status == git.StatusStale {
+			ago := formatStaleTimeText(agent.StaleFor)
+			fmt.Printf("  \u2514 inactive %s", ago)
+			if agent.Commits > 0 {
+				fmt.Printf(", %d unpushed commit(s)", agent.Commits)
+			}
+			fmt.Println()
+		} else if agent.Status == git.StatusAbandoned {
+			fmt.Println("  \u2514 all work already pushed, safe to discard")
+		}
 	}
 
-	// Staged commits
 	if len(state.StagedCommits) > 0 {
 		fmt.Printf("\nSTAGED COMMITS (%d):\n", len(state.StagedCommits))
 		for _, c := range state.StagedCommits {
@@ -52,10 +62,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Queue
 	fmt.Printf("\nDEPLOY QUEUE: %d/%d ready\n", state.ReadyCount, state.TotalCount)
 
-	// Conflicts
 	if len(state.Conflicts) > 0 {
 		fmt.Printf("\nCONFLICTS (%d):\n", len(state.Conflicts))
 		for _, c := range state.Conflicts {
@@ -65,14 +73,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		fmt.Println("\nCONFLICTS: None")
 	}
 
-	// Migrations
 	if state.HasMigrations {
 		fmt.Println("MIGRATIONS: Pending changes detected")
 	}
 
-	// Last push
 	if state.LastPushHash != "" {
-		fmt.Printf("LAST DEPLOY: %s — %s\n", state.LastPushTime, state.LastPushHash)
+		fmt.Printf("LAST DEPLOY: %s \u2014 %s\n", state.LastPushTime, state.LastPushHash)
 	}
 
 	return nil
@@ -81,10 +87,27 @@ func runStatus(cmd *cobra.Command, args []string) error {
 func statusIcon(s git.AgentStatus) string {
 	switch s {
 	case git.StatusStaged:
-		return "\u2713" // checkmark
+		return "\u2713"
 	case git.StatusWorking:
-		return "\u2022" // bullet
+		return "\u25cf"
+	case git.StatusStale:
+		return "\u25cc"
+	case git.StatusAbandoned:
+		return "\u2205"
 	default:
-		return "\u25cb" // empty circle
+		return "\u25cb"
 	}
+}
+
+func formatStaleTimeText(d time.Duration) string {
+	if d < time.Minute {
+		return "just now"
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%d min", int(d.Minutes()))
+	}
+	if d < 24*time.Hour {
+		return fmt.Sprintf("%d hours", int(d.Hours()))
+	}
+	return fmt.Sprintf("%d days", int(d.Hours()/24))
 }

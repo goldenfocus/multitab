@@ -7,6 +7,14 @@ import (
 	"github.com/goldenfocus/multitab/internal/queue"
 )
 
+// viewMode controls what the main panel shows.
+type viewMode int
+
+const (
+	viewDashboard viewMode = iota // default: agent list + queue
+	viewIntel                     // expanded intel for selected agent
+)
+
 // Model holds all TUI state.
 type Model struct {
 	repoRoot string
@@ -17,6 +25,10 @@ type Model struct {
 	height   int
 	quitting bool
 
+	// Navigation
+	cursor   int      // selected agent index
+	mode     viewMode // current view
+
 	// Push state
 	pushing     bool
 	push        pushState
@@ -25,9 +37,8 @@ type Model struct {
 	pushElapsed time.Duration
 	spinFrame   int // animation frame counter
 
-	// View toggles
-	showDiff bool
-	showLog  bool
+	// Ambient animation
+	tick int // global tick counter for ambient effects
 }
 
 // Messages
@@ -38,19 +49,28 @@ type refreshMsg struct {
 
 type tickMsg time.Time
 
+type discardAgentMsg struct {
+	index int
+}
+
+type discardResultMsg struct {
+	err error
+}
+
 // NewModel creates the initial model.
 func NewModel(repoRoot, buildCmd string) Model {
 	return Model{
 		repoRoot: repoRoot,
 		buildCmd: buildCmd,
+		mode:     viewDashboard,
 	}
 }
 
-// Init starts the first refresh and the tick timer.
+// Init starts the first refresh and the ambient tick.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		refreshCmd(m.repoRoot),
-		tickEvery(5*time.Second),
+		ambientTick(),
 	)
 }
 
@@ -61,8 +81,9 @@ func refreshCmd(repoRoot string) tea.Cmd {
 	}
 }
 
-func tickEvery(d time.Duration) tea.Cmd {
-	return tea.Tick(d, func(t time.Time) tea.Msg {
+// ambientTick fires every 500ms for animations + every 5th tick triggers a refresh.
+func ambientTick() tea.Cmd {
+	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
