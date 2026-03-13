@@ -66,6 +66,20 @@ func handleDashboardKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		if agentCount > 0 {
 			m.mode = viewIntel
 		}
+	case "s", "S":
+		// Stage: merge agent's branch into local main
+		if agentCount > 0 && m.state != nil {
+			a := m.state.Agents[m.cursor]
+			if a.Status != git.StatusStaged && a.Commits > 0 {
+				return m, stageAgentCmd(m.repoRoot, a)
+			}
+		}
+	case "x", "X":
+		// Kill: force-remove worktree + branch
+		if agentCount > 0 && m.state != nil {
+			a := m.state.Agents[m.cursor]
+			return m, killAgentCmd(m.repoRoot, a)
+		}
 	case "p", "P":
 		if !m.pushing && m.state != nil && len(m.state.StagedCommits) > 0 {
 			m.pushing = true
@@ -104,10 +118,19 @@ func handleIntelKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				logRefreshTick(),
 			)
 		}
-	case "x", "X":
+	case "s", "S":
+		// Stage: merge agent's branch into local main
 		if m.state != nil && m.cursor < len(m.state.Agents) {
 			a := m.state.Agents[m.cursor]
-			return m, discardAgentCmd(m.repoRoot, a)
+			if a.Status != git.StatusStaged && a.Commits > 0 {
+				return m, stageAgentCmd(m.repoRoot, a)
+			}
+		}
+	case "x", "X":
+		// Kill: force-remove worktree + branch (any status)
+		if m.state != nil && m.cursor < len(m.state.Agents) {
+			a := m.state.Agents[m.cursor]
+			return m, killAgentCmd(m.repoRoot, a)
 		}
 	}
 	return m, nil
@@ -157,6 +180,20 @@ func discardAgentCmd(repoRoot string, a git.Agent) tea.Cmd {
 	return func() tea.Msg {
 		err := git.CleanupWorktree(repoRoot, a.Path, a.Branch)
 		return discardResultMsg{err: err}
+	}
+}
+
+func stageAgentCmd(repoRoot string, a git.Agent) tea.Cmd {
+	return func() tea.Msg {
+		err := git.MergeBranch(repoRoot, a.Branch)
+		return stageResultMsg{name: a.Name, err: err}
+	}
+}
+
+func killAgentCmd(repoRoot string, a git.Agent) tea.Cmd {
+	return func() tea.Msg {
+		err := git.ForceCleanupWorktree(repoRoot, a.Path, a.Branch)
+		return killResultMsg{name: a.Name, err: err}
 	}
 }
 

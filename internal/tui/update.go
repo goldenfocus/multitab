@@ -55,6 +55,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = viewDashboard
 		return m, refreshCmd(m.repoRoot)
 
+	case stageResultMsg:
+		if msg.err != nil {
+			m.spawnOk = ""
+			m.spawnErr = fmt.Errorf("stage %s: %v", msg.name, msg.err)
+		} else {
+			m.spawnOk = fmt.Sprintf("Staged %q \u2192 local main", msg.name)
+			m.spawnErr = nil
+		}
+		m.mode = viewDashboard
+		return m, refreshCmd(m.repoRoot)
+
+	case killResultMsg:
+		if msg.err != nil {
+			m.spawnOk = ""
+			m.spawnErr = fmt.Errorf("kill %s: %v", msg.name, msg.err)
+		} else {
+			m.spawnOk = fmt.Sprintf("Killed %q", msg.name)
+			m.spawnErr = nil
+		}
+		m.mode = viewDashboard
+		return m, refreshCmd(m.repoRoot)
+
 	case spawnResultMsg:
 		if msg.err != nil {
 			m.spawnErr = msg.err

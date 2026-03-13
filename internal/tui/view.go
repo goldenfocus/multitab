@@ -504,6 +504,8 @@ func renderDashboardFooter(m Model) string {
 	keys := []struct{ key, label string }{
 		{"\u2191\u2193", "navigate"},
 		{"\u21b5", "inspect"},
+		{"s", "stage"},
+		{"x", "kill"},
 		{"n", "new agent"},
 		{"p", "push"},
 		{"r", "refresh"},
@@ -523,13 +525,10 @@ func renderIntelFooter(agent git.Agent) string {
 		{"esc", "back"},
 		{"\u2191\u2193", "prev/next"},
 		{"l", "logs"},
+		{"s", "stage"},
+		{"x", "kill"},
+		{"q", "quit"},
 	}
-
-	if agent.Status == git.StatusStale || agent.Status == git.StatusAbandoned || agent.Status == git.StatusIdle {
-		keys = append(keys, struct{ key, label string }{"x", "discard"})
-	}
-
-	keys = append(keys, struct{ key, label string }{"q", "quit"})
 
 	var parts []string
 	for _, k := range keys {
