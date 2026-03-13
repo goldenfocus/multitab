@@ -184,9 +184,12 @@ func renderBanner(tick int) string {
 	right := bannerAccentStyle.Render(frames[(tick+2)%len(frames)])
 
 	title := bannerStyle.Render(" M U L T I T A B ")
-	sub := subtitleStyle.Render("multi-agent command center")
+	sub := subtitleStyle.Render("  multi-agent command center")
 
-	return fmt.Sprintf("\n  %s%s%s\n  %s", left, title, right, sub)
+	// Structural scan line
+	scan := dimSeparatorStyle.Render("  " + strings.Repeat("━", 58))
+
+	return fmt.Sprintf("  %s%s%s\n%s\n%s", left, title, right, sub, scan)
 }
 
 // ─────────────────────────────────────────────────
@@ -213,10 +216,10 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 
 	var b strings.Builder
 
-	// Section header with ruled line
-	b.WriteString(separatorStyle.Render("  ── "))
+	// Section header — cockpit panel divider
+	b.WriteString(separatorStyle.Render("  ━━ "))
 	b.WriteString(sectionTitleStyle.Render("AGENTS"))
-	b.WriteString(separatorStyle.Render(" " + strings.Repeat("─", 50)))
+	b.WriteString(separatorStyle.Render(" " + strings.Repeat("━", 50)))
 	b.WriteString("\n\n")
 
 	// Column headers
@@ -397,17 +400,15 @@ func renderQueueBar(ready, total, tick int) string {
 	restStr := strings.Join(barParts[filled:], "")
 	barStyled := queueFilledStyle.Render(filledStr) + queueEmptyStyle.Render(restStr)
 
-	var label string
-	if ready == total && total > 0 {
-		label = statusOkStyle.Render(fmt.Sprintf("  DEPLOY QUEUE  %d/%d", ready, total))
-	} else {
-		label = headerStyle.Render(fmt.Sprintf("  DEPLOY QUEUE  %d/%d", ready, total))
-	}
+	// Panel divider
+	divider := separatorStyle.Render("  ━━ ") +
+		sectionTitleStyle.Render(fmt.Sprintf("DEPLOY QUEUE %d/%d", ready, total)) +
+		separatorStyle.Render(" " + strings.Repeat("━", 36))
 
 	return fmt.Sprintf("\n%s\n  %s  %s\n",
-		label,
+		divider,
 		barStyled,
-		statusIndicatorStyle.Render(fmt.Sprintf("%d%% ready", pct)),
+		statusIndicatorStyle.Render(fmt.Sprintf("%d%%", pct)),
 	)
 }
 
@@ -491,8 +492,8 @@ func renderStatusBar(m Model) string {
 			fmt.Sprintf("deployed %s — %s", m.state.LastPushTime, m.state.LastPushHash)))
 	}
 
-	sep := statusBarDimStyle.Render(" · ")
-	line := separatorStyle.Render("  " + strings.Repeat("─", 56))
+	sep := statusBarDimStyle.Render(" ┃ ")
+	line := dimSeparatorStyle.Render("  " + strings.Repeat("━", 58))
 	return line + "\n  " + strings.Join(parts, sep)
 }
 

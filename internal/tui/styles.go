@@ -2,11 +2,22 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
-// ─────────────────────────────────────────────────
-// Rounded border — visible but not heavy
-// ─────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Heavy border — the spaceship hull
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-var roundBorder = lipgloss.Border{
+var heavyBorder = lipgloss.Border{
+	Top:         "━",
+	Bottom:      "━",
+	Left:        "┃",
+	Right:       "┃",
+	TopLeft:     "┏",
+	TopRight:    "┓",
+	BottomLeft:  "┗",
+	BottomRight: "┛",
+}
+
+var thinRoundBorder = lipgloss.Border{
 	Top:         "─",
 	Bottom:      "─",
 	Left:        "│",
@@ -18,7 +29,7 @@ var roundBorder = lipgloss.Border{
 }
 
 var (
-	// ── Palette (matches multitab.io website) ────
+	// ── Palette (matches multitab.io) ────────────
 	cyan   = lipgloss.Color("#00f0ff")
 	violet = lipgloss.Color("#8b5cf6")
 	pink   = lipgloss.Color("#f472b6")
@@ -27,17 +38,16 @@ var (
 	red    = lipgloss.Color("#f87171")
 	orange = lipgloss.Color("#fb923c")
 
-	// Grays — graduated for depth
-	bgDark    = lipgloss.Color("#0a0a14")
+	// Grays
 	dimGray   = lipgloss.Color("#2a2a3e")
 	midGray   = lipgloss.Color("#64748b")
 	lightGray = lipgloss.Color("#94a3b8")
 	softWhite = lipgloss.Color("#cbd5e1")
 	white     = lipgloss.Color("#e2e8f0")
 
-	// ── Outer frame (the ship hull — VISIBLE) ───
+	// ── Outer hull (HEAVY cyan border) ──────────
 	frameBorder = lipgloss.NewStyle().
-			Border(roundBorder).
+			Border(heavyBorder).
 			BorderForeground(cyan).
 			Padding(1, 2)
 
@@ -47,7 +57,7 @@ var (
 			Bold(true)
 
 	bannerAccentStyle = lipgloss.NewStyle().
-				Foreground(violet).
+				Foreground(pink).
 				Bold(true)
 
 	subtitleStyle = lipgloss.NewStyle().
@@ -62,8 +72,13 @@ var (
 			Foreground(midGray).
 			Bold(true)
 
+	// Bright separator for structural dividers
 	separatorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#334155"))
+			Foreground(cyan)
+
+	// Dim separator for subtle dividers
+	dimSeparatorStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#1e3a4a"))
 
 	cursorStyle = lipgloss.NewStyle().
 			Foreground(cyan).
@@ -96,14 +111,14 @@ var (
 	statusIdleStyle = lipgloss.NewStyle().
 			Foreground(midGray)
 
-	// ── Panels ──────────────────────────────────
+	// ── Panels (thin rounded for inner) ─────────
 	panelStyle = lipgloss.NewStyle().
-			Border(roundBorder).
+			Border(thinRoundBorder).
 			BorderForeground(lipgloss.Color("#334155")).
 			Padding(0, 1)
 
 	panelActiveStyle = lipgloss.NewStyle().
-				Border(roundBorder).
+				Border(thinRoundBorder).
 				BorderForeground(cyan).
 				Padding(0, 1)
 
@@ -132,7 +147,7 @@ var (
 				Foreground(pink).
 				Bold(true)
 
-	// ── Status bar ──────────────────────────────
+	// ── Status indicators ───────────────────────
 	statusOkStyle = lipgloss.NewStyle().
 			Foreground(green)
 
@@ -178,7 +193,7 @@ var (
 			Foreground(green).
 			Bold(true)
 
-	// ── Status bar (bottom instrument panel) ────
+	// ── Status bar ──────────────────────────────
 	statusBarStyle = lipgloss.NewStyle().
 			Foreground(lightGray)
 
@@ -189,7 +204,7 @@ var (
 	statusBarDimStyle = lipgloss.NewStyle().
 				Foreground(dimGray)
 
-	// ── Queue bar styles ────────────────────────
+	// ── Queue bar ───────────────────────────────
 	queueFilledStyle = lipgloss.NewStyle().
 				Foreground(cyan)
 
