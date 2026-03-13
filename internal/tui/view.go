@@ -192,6 +192,17 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 			statusIdleStyle.Render(" to launch one.\n")
 	}
 
+	// Separate active agents from dormant (IDLE with 0 commits, 0 files)
+	var activeIdxs []int
+	var dormantCount int
+	for i, agent := range agents {
+		if agent.Status == git.StatusIdle && agent.Commits == 0 && agent.Files == 0 && agent.DirtyFiles == 0 {
+			dormantCount++
+		} else {
+			activeIdxs = append(activeIdxs, i)
+		}
+	}
+
 	var b strings.Builder
 
 	// Section header
@@ -207,6 +218,12 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 	b.WriteString("\n")
 
 	for i, agent := range agents {
+		// Skip dormant agents in main list (unless selected)
+		isDormant := agent.Status == git.StatusIdle && agent.Commits == 0 && agent.Files == 0 && agent.DirtyFiles == 0
+		if isDormant && i != cursor {
+			continue
+		}
+
 		isSelected := i == cursor
 
 		pointer := "  "
@@ -216,11 +233,7 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 
 		icon := agentIcon(agent.Status, tick)
 
-		// Truncate long names to fit table layout
-		displayName := agent.Name
-		if len(displayName) > 22 {
-			displayName = displayName[:19] + "..."
-		}
+		displayName := cleanAgentName(agent.Name)
 
 		var name string
 		if isSelected {
@@ -243,7 +256,59 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 		}
 	}
 
+	// Dormant summary (collapsed)
+	if dormantCount > 0 {
+		label := "dormant worktree"
+		if dormantCount > 1 {
+			label = "dormant worktrees"
+		}
+		b.WriteString(statusIdleStyle.Render(
+			fmt.Sprintf("    \u25cb %d %s (idle, no changes)\n", dormantCount, label)))
+	}
+
 	return b.String()
+}
+
+// cleanAgentName makes agent names display-friendly.
+// Strips UUID/hex suffixes, truncates, and cleans up auto-generated garbage.
+func cleanAgentName(name string) string {
+	// Strip common auto-generated suffixes (UUIDs, hex hashes)
+	// e.g., "worktree-agent-a3e4aa70" → "worktree-agent"
+	// e.g., "agent-afae1234" → "agent"
+	parts := strings.Split(name, "-")
+	var cleaned []string
+	for _, p := range parts {
+		// Skip parts that look like hex hashes (8+ hex chars)
+		if len(p) >= 8 && isHex(p) {
+			continue
+		}
+		// Skip "worktree" prefix — redundant info
+		if p == "worktree" {
+			continue
+		}
+		cleaned = append(cleaned, p)
+	}
+
+	result := strings.Join(cleaned, "-")
+	if result == "" {
+		result = name // fallback to original if we stripped everything
+	}
+
+	// Truncate to fit table
+	if len(result) > 22 {
+		result = result[:19] + "..."
+	}
+
+	return result
+}
+
+func isHex(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 func renderStatusBadge(status git.AgentStatus, tick int) string {

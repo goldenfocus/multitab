@@ -40,6 +40,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.pushing && m.tick%10 == 0 {
 			cmds = append(cmds, refreshCmd(m.repoRoot))
 		}
+		// Auto-clear feedback messages after ~6 seconds (12 ticks)
+		if (m.spawnOk != "" || m.spawnErr != nil) && m.feedbackAt > 0 && m.tick-m.feedbackAt > 12 {
+			m.spawnOk = ""
+			m.spawnErr = nil
+		}
 		return m, tea.Batch(cmds...)
 
 	case pushStepCompleteMsg:
@@ -67,6 +72,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.spawnOk = fmt.Sprintf("Staged %q \u2192 local main", msg.name)
 			m.spawnErr = nil
 		}
+		m.feedbackAt = m.tick
 		m.mode = viewDashboard
 		return m, refreshCmd(m.repoRoot)
 
@@ -78,6 +84,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.spawnOk = fmt.Sprintf("Killed %q", msg.name)
 			m.spawnErr = nil
 		}
+		m.feedbackAt = m.tick
 		m.mode = viewDashboard
 		return m, refreshCmd(m.repoRoot)
 
@@ -89,6 +96,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.spawnOk = fmt.Sprintf("Agent %q launched", msg.name)
 			m.spawnErr = nil
 		}
+		m.feedbackAt = m.tick
 		return m, refreshCmd(m.repoRoot)
 
 	case logContentMsg:

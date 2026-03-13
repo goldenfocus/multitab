@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	agentpkg "github.com/goldenfocus/multitab/internal/agent"
 	"github.com/goldenfocus/multitab/internal/git"
+	"github.com/goldenfocus/multitab/internal/queue"
 )
 
 func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -60,13 +61,9 @@ func handleDashboardKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
+		m.cursor = prevActiveAgent(m.state, m.cursor)
 	case "down", "j":
-		if m.cursor < agentCount-1 {
-			m.cursor++
-		}
+		m.cursor = nextActiveAgent(m.state, m.cursor)
 	case "enter", "right":
 		if agentCount > 0 {
 			m.mode = viewIntel
@@ -232,6 +229,48 @@ func handleSpawnKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.promptInput, cmd = m.promptInput.Update(msg)
 	return m, cmd
+}
+
+// isDormant returns true if an agent is idle with zero activity.
+func isDormant(a git.Agent) bool {
+	return a.Status == git.StatusIdle && a.Commits == 0 && a.Files == 0 && a.DirtyFiles == 0
+}
+
+// nextActiveAgent finds the next non-dormant agent index, or the next index if all are dormant.
+func nextActiveAgent(state *queue.State, current int) int {
+	if state == nil || len(state.Agents) == 0 {
+		return current
+	}
+	n := len(state.Agents)
+	// Try to find next active agent
+	for i := current + 1; i < n; i++ {
+		if !isDormant(state.Agents[i]) {
+			return i
+		}
+	}
+	// No more active agents below — just go to next if any
+	if current < n-1 {
+		return current + 1
+	}
+	return current
+}
+
+// prevActiveAgent finds the previous non-dormant agent index.
+func prevActiveAgent(state *queue.State, current int) int {
+	if state == nil || len(state.Agents) == 0 {
+		return current
+	}
+	// Try to find prev active agent
+	for i := current - 1; i >= 0; i-- {
+		if !isDormant(state.Agents[i]) {
+			return i
+		}
+	}
+	// No more active agents above — just go to prev if any
+	if current > 0 {
+		return current - 1
+	}
+	return current
 }
 
 func discardAgentCmd(repoRoot string, a git.Agent) tea.Cmd {

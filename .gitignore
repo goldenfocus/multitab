@@ -1,3 +1,4 @@
 multitab
 dist/
 .multitab.toml
+.claude/

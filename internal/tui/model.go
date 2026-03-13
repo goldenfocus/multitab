@@ -38,6 +38,7 @@ type Model struct {
 	promptInput textinput.Model
 	spawnErr    error
 	spawnOk     string
+	feedbackAt  int // tick when feedback was set (for auto-clear)
 
 	// Log viewer
 	viewport   viewport.Model
