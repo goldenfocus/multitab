@@ -7,14 +7,18 @@ import (
 	"github.com/goldenfocus/multitab/internal/git"
 )
 
-// handleKeypress routes key events to actions.
 func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	// Spawn mode handles its own input
 	if m.mode == viewSpawn {
 		return handleSpawnKeys(m, msg)
 	}
 
-	// Global keys (work in any non-input mode)
+	// Log view handles its own scrolling
+	if m.mode == viewLog {
+		return handleLogKeys(m, msg)
+	}
+
+	// Global keys
 	switch msg.String() {
 	case "q", "ctrl+c":
 		m.quitting = true
@@ -24,7 +28,6 @@ func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, refreshCmd(m.repoRoot)
 		}
 	case "n", "N":
-		// Open spawn prompt
 		m.mode = viewSpawn
 		m.promptInput.Focus()
 		m.promptInput.SetValue("")
@@ -33,7 +36,7 @@ func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, textinput.Blink
 	}
 
-	// Mode-specific keys
+	// Mode-specific
 	switch m.mode {
 	case viewDashboard:
 		return handleDashboardKeys(m, msg)
@@ -89,14 +92,44 @@ func handleIntelKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.state != nil && m.cursor < len(m.state.Agents)-1 {
 			m.cursor++
 		}
+	case "l", "L", "o", "O":
+		// Jump into log view
+		if m.state != nil && m.cursor < len(m.state.Agents) {
+			a := m.state.Agents[m.cursor]
+			m.mode = viewLog
+			m.logContent = ""
+			m.viewport = initViewport("loading...", m.width, m.height)
+			return m, tea.Batch(
+				fetchLogCmd(a.Path),
+				logRefreshTick(),
+			)
+		}
 	case "x", "X":
-		// Discard selected agent
 		if m.state != nil && m.cursor < len(m.state.Agents) {
 			a := m.state.Agents[m.cursor]
 			return m, discardAgentCmd(m.repoRoot, a)
 		}
 	}
 	return m, nil
+}
+
+func handleLogKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "backspace", "q":
+		m.mode = viewIntel
+		return m, nil
+	case "g":
+		m.viewport.GotoTop()
+		return m, nil
+	case "G":
+		m.viewport.GotoBottom()
+		return m, nil
+	}
+
+	// Forward to viewport for scrolling (up/down/pgup/pgdn)
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
 }
 
 func handleSpawnKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -115,7 +148,6 @@ func handleSpawnKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, spawnAgentCmd(m.repoRoot, prompt)
 	}
 
-	// Forward to textinput
 	var cmd tea.Cmd
 	m.promptInput, cmd = m.promptInput.Update(msg)
 	return m, cmd

@@ -10,18 +10,20 @@ import (
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		newM, cmd := handleKeypress(m, msg)
-		return newM, cmd
+		return handleKeypress(m, msg)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		if m.mode == viewLog {
+			m.viewport.Width = maxInt(m.width-8, 40)
+			m.viewport.Height = maxInt(m.height-10, 10)
+		}
 		return m, nil
 
 	case refreshMsg:
 		m.state = msg.state
 		m.err = msg.err
-		// Clamp cursor
 		if m.state != nil && m.cursor >= len(m.state.Agents) {
 			m.cursor = max(0, len(m.state.Agents)-1)
 		}
@@ -31,7 +33,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tick++
 		var cmds []tea.Cmd
 		cmds = append(cmds, ambientTick())
-		// Refresh every 10 ticks (5 seconds at 500ms interval)
 		if !m.pushing && m.tick%10 == 0 {
 			cmds = append(cmds, refreshCmd(m.repoRoot))
 		}
@@ -63,12 +64,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.spawnErr = nil
 		}
 		return m, refreshCmd(m.repoRoot)
+
+	case logContentMsg:
+		if msg.err != nil {
+			m.logContent = fmt.Sprintf("Error reading log: %v", msg.err)
+		} else {
+			m.logContent = msg.content
+		}
+		m.viewport.SetContent(m.logContent)
+		m.viewport.GotoBottom()
+		return m, nil
+
+	case logRefreshTickMsg:
+		// Auto-refresh log every 2s while in log view
+		if m.mode == viewLog && m.state != nil && m.cursor < len(m.state.Agents) {
+			a := m.state.Agents[m.cursor]
+			return m, tea.Batch(
+				fetchLogCmd(a.Path),
+				logRefreshTick(),
+			)
+		}
+		return m, nil
 	}
 
-	// Forward all unhandled messages to textinput when in spawn mode
+	// Forward to textinput in spawn mode
 	if m.mode == viewSpawn {
 		var cmd tea.Cmd
 		m.promptInput, cmd = m.promptInput.Update(msg)
+		return m, cmd
+	}
+
+	// Forward to viewport in log mode
+	if m.mode == viewLog {
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
 	}
 

@@ -31,6 +31,8 @@ func (m Model) View() string {
 		return m.renderIntelView()
 	case viewSpawn:
 		return m.renderSpawnView()
+	case viewLog:
+		return renderLogView(m)
 	default:
 		return m.renderDashboardView()
 	}
@@ -520,6 +522,7 @@ func renderIntelFooter(agent git.Agent) string {
 	keys := []struct{ key, label string }{
 		{"esc", "back"},
 		{"\u2191\u2193", "prev/next"},
+		{"l", "logs"},
 	}
 
 	if agent.Status == git.StatusStale || agent.Status == git.StatusAbandoned || agent.Status == git.StatusIdle {

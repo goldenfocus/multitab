@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/goldenfocus/multitab/internal/queue"
 )
@@ -12,9 +13,10 @@ import (
 type viewMode int
 
 const (
-	viewDashboard viewMode = iota // default: agent list + queue
-	viewIntel                     // expanded intel for selected agent
-	viewSpawn                     // prompt input for new agent
+	viewDashboard viewMode = iota
+	viewIntel
+	viewSpawn
+	viewLog // scrollable log viewer
 )
 
 // Model holds all TUI state.
@@ -28,13 +30,17 @@ type Model struct {
 	quitting bool
 
 	// Navigation
-	cursor int      // selected agent index
-	mode   viewMode // current view
+	cursor int
+	mode   viewMode
 
 	// Spawn input
 	promptInput textinput.Model
 	spawnErr    error
-	spawnOk     string // success message after spawn
+	spawnOk     string
+
+	// Log viewer
+	viewport   viewport.Model
+	logContent string
 
 	// Push state
 	pushing     bool
@@ -42,10 +48,10 @@ type Model struct {
 	pushErr     error
 	pushDone    bool
 	pushElapsed time.Duration
-	spinFrame   int // animation frame counter
+	spinFrame   int
 
 	// Ambient animation
-	tick int // global tick counter for ambient effects
+	tick int
 }
 
 // Messages
@@ -58,6 +64,16 @@ type tickMsg time.Time
 
 type discardResultMsg struct {
 	err error
+}
+
+type stageResultMsg struct {
+	name string
+	err  error
+}
+
+type killResultMsg struct {
+	name string
+	err  error
 }
 
 type spawnResultMsg struct {
@@ -95,7 +111,6 @@ func refreshCmd(repoRoot string) tea.Cmd {
 	}
 }
 
-// ambientTick fires every 500ms for animations + periodic refresh.
 func ambientTick() tea.Cmd {
 	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 		return tickMsg(t)

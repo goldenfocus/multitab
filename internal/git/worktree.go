@@ -177,8 +177,13 @@ func InspectAgent(repoRoot string, agent *Agent) error {
 	// Check if all work is already on origin/main
 	agent.AlreadyPushed = checkAlreadyPushed(agent)
 
-	// Determine status
-	if isStaged(repoRoot, agent.Branch) {
+	// Determine status — order matters!
+	hasWork := agent.Commits > 0 || agent.DirtyFiles > 0
+
+	if !hasWork {
+		// No commits, no dirty files = nothing to do here
+		agent.Status = StatusIdle
+	} else if isStaged(repoRoot, agent.Branch) {
 		agent.Status = StatusStaged
 	} else if agent.AlreadyPushed && agent.DirtyFiles == 0 {
 		agent.Status = StatusAbandoned
@@ -187,10 +192,8 @@ func InspectAgent(repoRoot string, agent *Agent) error {
 		if !agent.LastCommitTime.IsZero() {
 			agent.StaleFor = time.Since(agent.LastCommitTime)
 		}
-	} else if agent.DirtyFiles > 0 || agent.Commits > 0 {
-		agent.Status = StatusWorking
 	} else {
-		agent.Status = StatusIdle
+		agent.Status = StatusWorking
 	}
 
 	return nil

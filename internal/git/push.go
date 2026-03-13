@@ -100,3 +100,19 @@ func CleanupWorktree(repoRoot, worktreePath, branch string) error {
 	}
 	return nil
 }
+
+// ForceCleanupWorktree removes a worktree even if it has uncommitted changes.
+func ForceCleanupWorktree(repoRoot, worktreePath, branch string) error {
+	removeCmd := exec.Command("git", "worktree", "remove", "--force", worktreePath)
+	removeCmd.Dir = repoRoot
+	if out, err := removeCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("worktree remove --force: %s", string(out))
+	}
+
+	if branch != "" && branch != "main" {
+		branchCmd := exec.Command("git", "branch", "-D", branch)
+		branchCmd.Dir = repoRoot
+		branchCmd.CombinedOutput() // best effort
+	}
+	return nil
+}

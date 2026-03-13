@@ -102,17 +102,29 @@ func deriveName(prompt string) string {
 		return sanitize(base)
 	}
 
-	// Take first few meaningful words
+	// Filter out stop words, take first 3 meaningful words
 	words := strings.Fields(strings.ToLower(prompt))
-	if len(words) > 4 {
-		words = words[:4]
+	stopWords := map[string]bool{
+		"the": true, "a": true, "an": true, "and": true, "or": true,
+		"to": true, "in": true, "on": true, "at": true, "for": true,
+		"of": true, "with": true, "from": true, "by": true, "is": true,
+		"it": true, "that": true, "this": true, "any": true, "all": true,
+		"there": true, "even": true, "also": true, "just": true,
+	}
+	var meaningful []string
+	for _, w := range words {
+		clean := sanitize(w)
+		if clean != "" && !stopWords[clean] && len(meaningful) < 3 {
+			meaningful = append(meaningful, clean)
+		}
 	}
 
-	name := strings.Join(words, "-")
-	name = sanitize(name)
+	name := strings.Join(meaningful, "-")
 
-	if len(name) > 30 {
-		name = name[:30]
+	if len(name) > 20 {
+		name = name[:20]
+		// Don't end on a dash
+		name = strings.TrimRight(name, "-")
 	}
 
 	if name == "" {
