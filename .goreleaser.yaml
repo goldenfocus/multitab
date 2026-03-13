@@ -1,0 +1,34 @@
+version: 2
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+brews:
+  - repository:
+      owner: vibeyang
+      name: homebrew-tap
+    homepage: https://multitab.io
+    description: Multi-agent push orchestrator — spaceship dashboard for coordinating Claude Code sessions
+    license: MIT
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
