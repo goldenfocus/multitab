@@ -1,13 +1,20 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goldenfocus/multitab/internal/agent"
 	"github.com/goldenfocus/multitab/internal/git"
 )
 
 // handleKeypress routes key events to actions.
 func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
-	// Global keys (work in any mode)
+	// Spawn mode handles its own input
+	if m.mode == viewSpawn {
+		return handleSpawnKeys(m, msg)
+	}
+
+	// Global keys (work in any non-input mode)
 	switch msg.String() {
 	case "q", "ctrl+c":
 		m.quitting = true
@@ -16,6 +23,14 @@ func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		if !m.pushing {
 			return m, refreshCmd(m.repoRoot)
 		}
+	case "n", "N":
+		// Open spawn prompt
+		m.mode = viewSpawn
+		m.promptInput.Focus()
+		m.promptInput.SetValue("")
+		m.spawnErr = nil
+		m.spawnOk = ""
+		return m, textinput.Blink
 	}
 
 	// Mode-specific keys
@@ -77,16 +92,48 @@ func handleIntelKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	case "x", "X":
 		// Discard selected agent
 		if m.state != nil && m.cursor < len(m.state.Agents) {
-			agent := m.state.Agents[m.cursor]
-			return m, discardAgent(m.repoRoot, agent)
+			a := m.state.Agents[m.cursor]
+			return m, discardAgentCmd(m.repoRoot, a)
 		}
 	}
 	return m, nil
 }
 
-func discardAgent(repoRoot string, agent git.Agent) tea.Cmd {
+func handleSpawnKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.mode = viewDashboard
+		m.promptInput.Blur()
+		return m, nil
+	case "enter":
+		prompt := m.promptInput.Value()
+		if prompt == "" {
+			return m, nil
+		}
+		m.promptInput.Blur()
+		m.mode = viewDashboard
+		return m, spawnAgentCmd(m.repoRoot, prompt)
+	}
+
+	// Forward to textinput
+	var cmd tea.Cmd
+	m.promptInput, cmd = m.promptInput.Update(msg)
+	return m, cmd
+}
+
+func discardAgentCmd(repoRoot string, a git.Agent) tea.Cmd {
 	return func() tea.Msg {
-		err := git.CleanupWorktree(repoRoot, agent.Path, agent.Branch)
+		err := git.CleanupWorktree(repoRoot, a.Path, a.Branch)
 		return discardResultMsg{err: err}
+	}
+}
+
+func spawnAgentCmd(repoRoot, prompt string) tea.Cmd {
+	return func() tea.Msg {
+		result := agent.Spawn(repoRoot, prompt)
+		if result.Err != nil {
+			return spawnResultMsg{name: result.Name, err: result.Err}
+		}
+		return spawnResultMsg{name: result.Name}
 	}
 }

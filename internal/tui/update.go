@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -49,9 +51,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 		}
-		// Refresh and go back to dashboard
 		m.mode = viewDashboard
 		return m, refreshCmd(m.repoRoot)
+
+	case spawnResultMsg:
+		if msg.err != nil {
+			m.spawnErr = msg.err
+			m.spawnOk = ""
+		} else {
+			m.spawnOk = fmt.Sprintf("Agent %q launched", msg.name)
+			m.spawnErr = nil
+		}
+		return m, refreshCmd(m.repoRoot)
+	}
+
+	// Forward all unhandled messages to textinput when in spawn mode
+	if m.mode == viewSpawn {
+		var cmd tea.Cmd
+		m.promptInput, cmd = m.promptInput.Update(msg)
+		return m, cmd
 	}
 
 	return m, nil

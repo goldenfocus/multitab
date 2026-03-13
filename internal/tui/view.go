@@ -10,19 +10,6 @@ import (
 
 var spinnerFrames = []string{"\u280b", "\u2819", "\u2839", "\u2838", "\u283c", "\u2834", "\u2826", "\u2827", "\u2807", "\u280f"}
 
-// Ambient glow frames for the title
-var glowFrames = []string{
-	"\u2591\u2592\u2593\u2588",
-	"\u2592\u2593\u2588\u2593",
-	"\u2593\u2588\u2593\u2592",
-	"\u2588\u2593\u2592\u2591",
-}
-
-const banner = ` _____ _____ _   ____ _____
-|     |  |  | | |_   _|  _  |  ___|
-| | | |  |  | |_  | | | |_| || ___ \
-|_|_|_|_____|___| |_| |_____|_____|`
-
 // View renders the spaceship dashboard.
 func (m Model) View() string {
 	if m.quitting {
@@ -34,140 +21,183 @@ func (m Model) View() string {
 	}
 
 	if m.state == nil {
-		frame := glowFrames[m.tick%len(glowFrames)]
-		return bannerStyle.Render(banner) + "\n\n  " +
-			pushStepActiveStyle.Render(frame+" Scanning worktrees... "+frame)
+		spinner := spinnerFrames[m.tick%len(spinnerFrames)]
+		return bannerStyle.Render("  MULTITAB") + "\n\n  " +
+			pushStepActiveStyle.Render(spinner+" scanning worktrees...")
 	}
 
 	switch m.mode {
 	case viewIntel:
 		return m.renderIntelView()
+	case viewSpawn:
+		return m.renderSpawnView()
 	default:
 		return m.renderDashboardView()
 	}
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Dashboard view
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 func (m Model) renderDashboardView() string {
 	var sections []string
 
-	// ── Banner ───────────────────────────────────
 	sections = append(sections, renderBanner(m.tick))
-
-	// ── Agent table ──────────────────────────────
 	sections = append(sections, renderAgentTable(m.state.Agents, m.cursor, m.tick))
-
-	// ── Deploy queue ─────────────────────────────
 	sections = append(sections, renderQueueBar(m.state.ReadyCount, m.state.TotalCount, m.tick))
 
-	// ── Staged commits ───────────────────────────
 	if len(m.state.StagedCommits) > 0 {
 		sections = append(sections, renderCommitsPanel(m.state.StagedCommits))
 	}
 
-	// ── System status ────────────────────────────
-	sections = append(sections, renderStatusBar(m))
+	sections = append(sections, renderSystemStatus(m))
 
-	// ── Push progress ────────────────────────────
 	if m.pushing {
 		sections = append(sections, renderLivePush(m))
 	}
 	if m.pushErr != nil && !m.pushing {
-		sections = append(sections, errorStyle.Render(fmt.Sprintf("  Push failed: %v", m.pushErr)))
+		sections = append(sections, errorStyle.Render(fmt.Sprintf("  \u2718 Push failed: %v", m.pushErr)))
 	}
 	if m.pushDone {
 		sections = append(sections,
-			statusOkStyle.Render(fmt.Sprintf("  \u2714 Deployed in %s", m.pushElapsed.Round(time.Millisecond))))
+			successStyle.Render(fmt.Sprintf("  \u2714 Deployed in %s", m.pushElapsed.Round(time.Millisecond))))
 	}
 
-	// ── Footer ───────────────────────────────────
+	// Spawn feedback
+	if m.spawnOk != "" {
+		sections = append(sections, successStyle.Render("  \u2714 "+m.spawnOk))
+	}
+	if m.spawnErr != nil {
+		sections = append(sections, errorStyle.Render(fmt.Sprintf("  \u2718 Spawn failed: %v", m.spawnErr)))
+	}
+
 	sections = append(sections, renderDashboardFooter(m))
 
 	content := strings.Join(sections, "\n")
-
 	if m.width > 60 {
-		maxWidth := min(m.width-4, 72)
+		maxWidth := clampInt(m.width-4, 60, 76)
 		return frameBorder.Width(maxWidth).Render(content)
 	}
 	return content
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Intel view (drill-down)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 func (m Model) renderIntelView() string {
 	if m.state == nil || m.cursor >= len(m.state.Agents) {
-		m.mode = viewDashboard
 		return m.renderDashboardView()
 	}
 
 	agent := m.state.Agents[m.cursor]
 	var sections []string
 
-	// ── Header ───────────────────────────────────
 	sections = append(sections, renderBanner(m.tick))
-
-	// ── Agent intel panel ────────────────────────
 	sections = append(sections, renderIntelPanel(agent, m.tick))
-
-	// ── Footer ───────────────────────────────────
 	sections = append(sections, renderIntelFooter(agent))
 
 	content := strings.Join(sections, "\n")
-
 	if m.width > 60 {
-		maxWidth := min(m.width-4, 72)
+		maxWidth := clampInt(m.width-4, 60, 76)
 		return frameBorder.Width(maxWidth).Render(content)
 	}
 	return content
 }
 
-// ── Banner ───────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Spawn view (new agent prompt)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-func renderBanner(tick int) string {
-	// Animated side accents
-	frames := []string{"\u25c6", "\u25c7", "\u25c6", "\u25c7"}
-	accent := frames[tick%len(frames)]
+func (m Model) renderSpawnView() string {
+	var sections []string
 
-	title := bannerStyle.Render("  MULTITAB")
-	glow := cursorStyle.Render(accent)
+	sections = append(sections, renderBanner(m.tick))
+	sections = append(sections, "")
 
-	return fmt.Sprintf("\n  %s %s %s\n  %s",
-		glow, title, glow,
-		subtitleStyle.Render("multi-agent push orchestrator"))
+	// Spawn prompt panel
+	var lines []string
+	lines = append(lines, "  "+spawnPromptStyle.Render("\u25b6 NEW AGENT"))
+	lines = append(lines, "")
+	lines = append(lines, "  "+spawnHintStyle.Render("Type a task description or path to an .md file."))
+	lines = append(lines, "  "+spawnHintStyle.Render("multitab will create a worktree and launch Claude."))
+	lines = append(lines, "")
+	lines = append(lines, "  "+m.promptInput.View())
+	lines = append(lines, "")
+
+	sections = append(sections, panelActiveStyle.Render(strings.Join(lines, "\n")))
+
+	// Footer
+	keys := []struct{ key, label string }{
+		{"enter", "launch"},
+		{"esc", "cancel"},
+	}
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, footerKeyStyle.Render(k.key)+" "+footerStyle.Render(k.label))
+	}
+	sections = append(sections, "\n  "+strings.Join(parts, "  "+separatorStyle.Render("\u2502")+"  "))
+
+	content := strings.Join(sections, "\n")
+	if m.width > 60 {
+		maxWidth := clampInt(m.width-4, 60, 76)
+		return frameBorder.Width(maxWidth).Render(content)
+	}
+	return content
 }
 
-// ── Agent table ──────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Banner
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+func renderBanner(tick int) string {
+	// Pulsing accent diamonds
+	diamonds := []string{"\u25c6\u25c7\u25c6", "\u25c7\u25c6\u25c7", "\u25c6\u25c6\u25c7", "\u25c7\u25c7\u25c6"}
+	left := bannerAccentStyle.Render(diamonds[tick%len(diamonds)])
+	right := bannerAccentStyle.Render(diamonds[(tick+2)%len(diamonds)])
+
+	title := bannerStyle.Render(" M U L T I T A B ")
+	sub := subtitleStyle.Render("multi-agent command center")
+
+	return fmt.Sprintf("\n  %s%s%s\n  %s", left, title, right, sub)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Agent table
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 	if len(agents) == 0 {
-		return "\n" + statusIdleStyle.Render("  No agents detected. Create worktrees to get started.\n")
+		return "\n" + statusIdleStyle.Render("  No agents. Press ") +
+			footerKeyStyle.Render("n") +
+			statusIdleStyle.Render(" to launch one.\n")
 	}
 
 	var b strings.Builder
 
-	// Header with decorative line
+	// Section header
 	b.WriteString("\n")
-	b.WriteString(separatorStyle.Render("  \u2500\u2500 "))
-	b.WriteString(headerStyle.Render("AGENTS"))
-	b.WriteString(separatorStyle.Render(" " + strings.Repeat("\u2500", 50)))
+	b.WriteString(separatorStyle.Render("  \u2501\u2501 "))
+	b.WriteString(sectionTitleStyle.Render("AGENTS"))
+	b.WriteString(separatorStyle.Render(" " + strings.Repeat("\u2501", 48)))
 	b.WriteString("\n\n")
 
 	// Column headers
 	header := fmt.Sprintf("    %-26s %-16s %-8s %-6s", "", "STATUS", "COMMITS", "FILES")
-	b.WriteString(separatorStyle.Render(header))
+	b.WriteString(headerStyle.Render(header))
 	b.WriteString("\n")
 
-	// Rows
 	for i, agent := range agents {
 		isSelected := i == cursor
 
-		// Cursor indicator
 		pointer := "  "
 		if isSelected {
 			pointer = cursorStyle.Render("\u25b8 ")
 		}
 
-		// Agent icon
 		icon := agentIcon(agent.Status, tick)
 
-		// Agent name
 		var name string
 		if isSelected {
 			name = agentNameSelectedStyle.Render(agent.Name)
@@ -175,16 +205,13 @@ func renderAgentTable(agents []git.Agent, cursor, tick int) string {
 			name = agentNameStyle.Render(agent.Name)
 		}
 
-		// Status badge
 		status := renderStatusBadge(agent.Status, tick)
-
-		// Counts
 		commits := fmt.Sprintf("%-8d", agent.Commits)
 		files := fmt.Sprintf("%-6d", agent.Files)
 
 		b.WriteString(fmt.Sprintf("%s%s %s%s%s%s\n", pointer, icon, name, status, commits, files))
 
-		// Show stale hint inline
+		// Inline stale hint (only when not selected — intel view shows full detail)
 		if (agent.Status == git.StatusStale || agent.Status == git.StatusAbandoned) && !isSelected {
 			hint := staleHint(agent)
 			b.WriteString(statusIndicatorStyle.Render("      " + hint))
@@ -202,7 +229,6 @@ func renderStatusBadge(status git.AgentStatus, tick int) string {
 	case git.StatusWorking:
 		return statusWorkingStyle.Render(fmt.Sprintf("%-16s", "\u25cf ACTIVE"))
 	case git.StatusStale:
-		// Blinking effect for attention
 		if tick%4 < 3 {
 			return statusStaleStyle.Render(fmt.Sprintf("%-16s", "\u25cc STALE"))
 		}
@@ -219,7 +245,6 @@ func agentIcon(status git.AgentStatus, tick int) string {
 	case git.StatusStaged:
 		return statusStagedStyle.Render("\u25c8")
 	case git.StatusWorking:
-		// Pulsing dot
 		frames := []string{"\u25cf", "\u25cb", "\u25cf", "\u25cf"}
 		return statusWorkingStyle.Render(frames[tick%len(frames)])
 	case git.StatusStale:
@@ -242,14 +267,15 @@ func staleHint(agent git.Agent) string {
 	return ""
 }
 
-// ── Deploy queue ─────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Deploy queue
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func renderQueueBar(ready, total, tick int) string {
 	if total == 0 {
 		return ""
 	}
 
-	// Animated label
 	var label string
 	if ready == total && total > 0 {
 		label = statusOkStyle.Render(fmt.Sprintf("  DEPLOY QUEUE  %d/%d  ALL READY", ready, total))
@@ -267,7 +293,6 @@ func renderQueueBar(ready, total, tick int) string {
 		pct = (ready * 100) / total
 	}
 
-	// Animated fill with scanning effect
 	var barParts []string
 	for i := 0; i < barWidth; i++ {
 		if i < filled {
@@ -290,12 +315,14 @@ func renderQueueBar(ready, total, tick int) string {
 	)
 }
 
-// ── Staged commits ───────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Staged commits
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func renderCommitsPanel(commits []git.StagedCommit) string {
 	var lines []string
 	for _, c := range commits {
-		hash := commitHashStyle.Render(c.Hash)
+		hash := commitHashStyle.Render(c.Hash[:7])
 		msg := commitStyle.Render(" " + c.Message)
 		lines = append(lines, "  "+hash+msg)
 	}
@@ -306,25 +333,24 @@ func renderCommitsPanel(commits []git.StagedCommit) string {
 	)
 }
 
-// ── System status ────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// System status
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-func renderStatusBar(m Model) string {
+func renderSystemStatus(m Model) string {
 	var items []string
 
-	// Conflicts
 	if len(m.state.Conflicts) > 0 {
 		items = append(items, statusWarnStyle.Render(
 			fmt.Sprintf("  \u26a0 CONFLICTS  %d file(s) touched by multiple agents", len(m.state.Conflicts))))
 	} else {
-		items = append(items, statusOkStyle.Render("  \u2713 CONFLICTS  None"))
+		items = append(items, statusOkStyle.Render("  \u2713 CONFLICTS  clear"))
 	}
 
-	// Migrations
 	if m.state.HasMigrations {
-		items = append(items, statusWarnStyle.Render("  \u26a0 MIGRATIONS  Pending"))
+		items = append(items, statusWarnStyle.Render("  \u26a0 MIGRATIONS  pending"))
 	}
 
-	// Stale agents
 	staleCount := 0
 	for _, a := range m.state.Agents {
 		if a.Status == git.StatusStale || a.Status == git.StatusAbandoned {
@@ -336,7 +362,6 @@ func renderStatusBar(m Model) string {
 			fmt.Sprintf("  \u25cc STALE  %d worktree(s) need attention", staleCount)))
 	}
 
-	// Last deploy
 	if m.state.LastPushHash != "" {
 		items = append(items, statusIndicatorStyle.Render(
 			fmt.Sprintf("  \u2022 LAST DEPLOY  %s \u2014 %s", m.state.LastPushTime, m.state.LastPushHash)))
@@ -345,24 +370,23 @@ func renderStatusBar(m Model) string {
 	return "\n" + strings.Join(items, "\n")
 }
 
-// ── Intel panel (drill-down) ─────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Intel panel
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func renderIntelPanel(agent git.Agent, tick int) string {
 	var lines []string
 
-	// Agent name + status header
 	icon := agentIcon(agent.Status, tick)
 	badge := renderStatusBadge(agent.Status, tick)
 	lines = append(lines, fmt.Sprintf("  %s %s  %s",
 		icon, intelHeaderStyle.Render(agent.Name), badge))
 	lines = append(lines, "")
 
-	// Verdict
 	verdict := agentVerdict(agent)
 	lines = append(lines, "  "+verdict)
 	lines = append(lines, "")
 
-	// Key info
 	if !agent.LastCommitTime.IsZero() {
 		ago := formatStaleTime(time.Since(agent.LastCommitTime))
 		lines = append(lines, renderIntelRow("Last active", ago+" ago"))
@@ -378,7 +402,6 @@ func renderIntelPanel(agent git.Agent, tick int) string {
 		lines = append(lines, renderIntelRow("Pushed?", statusWarnStyle.Render("No \u2014 unpushed commits")))
 	}
 
-	// Commit messages
 	if len(agent.CommitMessages) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, "  "+panelTitleStyle.Render("COMMITS"))
@@ -387,7 +410,6 @@ func renderIntelPanel(agent git.Agent, tick int) string {
 		}
 	}
 
-	// Changed files (show first 15)
 	if len(agent.ChangedFiles) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, "  "+panelTitleStyle.Render(fmt.Sprintf("FILES (%d)", len(agent.ChangedFiles))))
@@ -404,8 +426,7 @@ func renderIntelPanel(agent git.Agent, tick int) string {
 		}
 	}
 
-	content := strings.Join(lines, "\n")
-	return "\n" + panelActiveStyle.Render(content)
+	return "\n" + panelActiveStyle.Render(strings.Join(lines, "\n"))
 }
 
 func agentVerdict(agent git.Agent) string {
@@ -432,7 +453,9 @@ func renderIntelRow(label, value string) string {
 	return "  " + intelLabelStyle.Render(label) + " " + intelValueStyle.Render(value)
 }
 
-// ── Push progress ────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Push progress
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func renderLivePush(m Model) string {
 	var lines []string
@@ -466,7 +489,9 @@ func renderLivePush(m Model) string {
 	)
 }
 
-// ── Footers ──────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Footers
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func renderDashboardFooter(m Model) string {
 	if m.pushing {
@@ -477,6 +502,7 @@ func renderDashboardFooter(m Model) string {
 	keys := []struct{ key, label string }{
 		{"\u2191\u2193", "navigate"},
 		{"\u21b5", "inspect"},
+		{"n", "new agent"},
 		{"p", "push"},
 		{"r", "refresh"},
 		{"q", "quit"},
@@ -493,7 +519,7 @@ func renderDashboardFooter(m Model) string {
 func renderIntelFooter(agent git.Agent) string {
 	keys := []struct{ key, label string }{
 		{"esc", "back"},
-		{"\u2191\u2193", "prev/next agent"},
+		{"\u2191\u2193", "prev/next"},
 	}
 
 	if agent.Status == git.StatusStale || agent.Status == git.StatusAbandoned || agent.Status == git.StatusIdle {
@@ -510,7 +536,9 @@ func renderIntelFooter(agent git.Agent) string {
 	return "\n  " + strings.Join(parts, "  "+separatorStyle.Render("\u2502")+"  ")
 }
 
-// ── Helpers ──────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Helpers
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 func formatDuration(d time.Duration) string {
 	if d < time.Second {
@@ -549,4 +577,14 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
