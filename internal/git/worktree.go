@@ -53,6 +53,12 @@ type Agent struct {
 	ChangedFiles   []string // list of changed file paths (for intel)
 	AlreadyPushed  bool     // true if all commits exist on origin/main
 	StaleFor       time.Duration
+
+	// Conversation intel (from Claude JSONL)
+	LastPrompt    string    // last human message text
+	LastPromptAt  time.Time // when it was sent
+	HumanMsgCount int       // total human messages in session
+	SessionID     string    // Claude session ID
 }
 
 // DiscoverWorktrees finds all git worktrees in the repo.

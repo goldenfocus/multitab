@@ -33,6 +33,8 @@ func (m Model) View() string {
 		return m.renderSpawnView()
 	case viewLog:
 		return renderLogView(m)
+	case viewPlayback:
+		return m.renderPlaybackView()
 	default:
 		return m.renderDashboardView()
 	}
@@ -96,8 +98,22 @@ func (m Model) renderIntelView() string {
 	agent := m.state.Agents[m.cursor]
 	var sections []string
 
-	sections = append(sections, renderBanner(m.tick))
-	sections = append(sections, renderIntelPanel(agent, m.tick))
+	// Header with agent name + status (outside viewport so always visible)
+	icon := agentIcon(agent.Status, m.tick)
+	badge := renderStatusBadge(agent.Status, m.tick)
+	sections = append(sections, fmt.Sprintf("\n  %s %s  %s",
+		icon, intelHeaderStyle.Render(agent.Name), badge))
+
+	// Scrollable viewport with intel content
+	sections = append(sections, "\n"+panelStyle.Render(m.viewport.View()))
+
+	// Scroll indicator
+	pct := m.viewport.ScrollPercent()
+	lines := strings.Count(m.logContent, "\n") + 1
+	scrollInfo := statusIndicatorStyle.Render(
+		fmt.Sprintf("  %d%% \u2502 %d lines", int(pct*100), lines))
+	sections = append(sections, scrollInfo)
+
 	sections = append(sections, renderIntelFooter(agent))
 
 	content := strings.Join(sections, "\n")
@@ -382,14 +398,12 @@ func renderSystemStatus(m Model) string {
 // Intel panel
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+func renderIntelContent(agent git.Agent, tick int) string {
+	return renderIntelPanel(agent, tick)
+}
+
 func renderIntelPanel(agent git.Agent, tick int) string {
 	var lines []string
-
-	icon := agentIcon(agent.Status, tick)
-	badge := renderStatusBadge(agent.Status, tick)
-	lines = append(lines, fmt.Sprintf("  %s %s  %s",
-		icon, intelHeaderStyle.Render(agent.Name), badge))
-	lines = append(lines, "")
 
 	verdict := agentVerdict(agent)
 	lines = append(lines, "  "+verdict)
@@ -404,10 +418,32 @@ func renderIntelPanel(agent git.Agent, tick int) string {
 	lines = append(lines, renderIntelRow("Commits", fmt.Sprintf("%d ahead of origin/main", agent.Commits)))
 	lines = append(lines, renderIntelRow("Dirty files", fmt.Sprintf("%d", agent.DirtyFiles)))
 
-	if agent.AlreadyPushed {
-		lines = append(lines, renderIntelRow("Pushed?", statusOkStyle.Render("Yes \u2014 all work is on remote")))
-	} else if agent.Commits > 0 {
-		lines = append(lines, renderIntelRow("Pushed?", statusWarnStyle.Render("No \u2014 unpushed commits")))
+	// Only show push status when there's actual work to push
+	if agent.Commits > 0 || agent.DirtyFiles > 0 {
+		if agent.AlreadyPushed && agent.DirtyFiles == 0 {
+			lines = append(lines, renderIntelRow("Pushed?", statusOkStyle.Render("Yes \u2014 all work is on remote")))
+		} else if agent.Commits > 0 {
+			lines = append(lines, renderIntelRow("Pushed?", statusWarnStyle.Render("No \u2014 unpushed commits")))
+		}
+	}
+
+	// Last human prompt from Claude conversation
+	if agent.LastPrompt != "" {
+		lines = append(lines, "")
+		lines = append(lines, "  "+panelTitleStyle.Render("LAST HUMAN PROMPT"))
+		prompt := agent.LastPrompt
+		if len(prompt) > 200 {
+			prompt = prompt[:200] + "..."
+		}
+		lines = append(lines, "    "+commitStyle.Render(prompt))
+		if !agent.LastPromptAt.IsZero() {
+			ago := formatStaleTime(time.Since(agent.LastPromptAt))
+			lines = append(lines, "    "+statusIndicatorStyle.Render(ago+" ago"))
+		}
+		if agent.HumanMsgCount > 0 {
+			lines = append(lines, "    "+statusIndicatorStyle.Render(
+				fmt.Sprintf("%d human messages in session", agent.HumanMsgCount)))
+		}
 	}
 
 	if len(agent.CommitMessages) > 0 {
@@ -421,20 +457,12 @@ func renderIntelPanel(agent git.Agent, tick int) string {
 	if len(agent.ChangedFiles) > 0 {
 		lines = append(lines, "")
 		lines = append(lines, "  "+panelTitleStyle.Render(fmt.Sprintf("FILES (%d)", len(agent.ChangedFiles))))
-		limit := 15
-		if len(agent.ChangedFiles) < limit {
-			limit = len(agent.ChangedFiles)
-		}
-		for _, f := range agent.ChangedFiles[:limit] {
+		for _, f := range agent.ChangedFiles {
 			lines = append(lines, "    "+intelFileStyle.Render(f))
-		}
-		if len(agent.ChangedFiles) > 15 {
-			lines = append(lines, statusIndicatorStyle.Render(
-				fmt.Sprintf("    ... and %d more", len(agent.ChangedFiles)-15)))
 		}
 	}
 
-	return "\n" + panelActiveStyle.Render(strings.Join(lines, "\n"))
+	return strings.Join(lines, "\n")
 }
 
 func agentVerdict(agent git.Agent) string {
@@ -459,6 +487,125 @@ func agentVerdict(agent git.Agent) string {
 
 func renderIntelRow(label, value string) string {
 	return "  " + intelLabelStyle.Render(label) + " " + intelValueStyle.Render(value)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Playback view (conversation replay)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+func (m Model) renderPlaybackView() string {
+	if len(m.chatTurns) == 0 {
+		return m.renderIntelView()
+	}
+
+	var sections []string
+
+	// Compact header with agent name + turn counter
+	agentName := ""
+	if m.state != nil && m.chatAgentIdx < len(m.state.Agents) {
+		agentName = m.state.Agents[m.chatAgentIdx].Name
+	}
+
+	turnLabel := fmt.Sprintf("TURN %d/%d", m.chatTurnIdx+1, len(m.chatTurns))
+	sections = append(sections, fmt.Sprintf("\n  %s  %s  %s",
+		bannerAccentStyle.Render("\u25c6"),
+		intelHeaderStyle.Render(agentName),
+		statusWorkingStyle.Render(turnLabel),
+	))
+
+	// Progress dots — visual indicator of position
+	dots := renderTurnDots(m.chatTurnIdx, len(m.chatTurns))
+	sections = append(sections, "  "+dots)
+
+	// The viewport shows the current turn content
+	sections = append(sections, "\n"+panelStyle.Render(m.viewport.View()))
+
+	// Scroll indicator
+	pct := m.viewport.ScrollPercent()
+	lines := strings.Count(m.logContent, "\n") + 1
+	scrollInfo := statusIndicatorStyle.Render(
+		fmt.Sprintf("  %d%% \u2502 %d lines", int(pct*100), lines))
+	sections = append(sections, scrollInfo)
+
+	// Footer
+	keys := []struct{ key, label string }{
+		{"esc", "back"},
+		{"\u2190\u2192", "prev/next turn"},
+		{"\u2191\u2193", "scroll"},
+		{"g/G", "top/bottom"},
+	}
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, footerKeyStyle.Render(k.key)+" "+footerStyle.Render(k.label))
+	}
+	sections = append(sections, "\n  "+strings.Join(parts, "  "+separatorStyle.Render("\u2502")+"  "))
+
+	content := strings.Join(sections, "\n")
+	if m.width > 60 {
+		maxWidth := clampInt(m.width-4, 60, 76)
+		return frameBorder.Width(maxWidth).Render(content)
+	}
+	return content
+}
+
+func renderTurnDots(current, total int) string {
+	if total <= 1 {
+		return ""
+	}
+	var dots []string
+	maxDots := min(total, 30) // cap for very long conversations
+	for i := 0; i < maxDots; i++ {
+		if i == current {
+			dots = append(dots, statusWorkingStyle.Render("\u25cf"))
+		} else {
+			dots = append(dots, statusIndicatorStyle.Render("\u25cb"))
+		}
+	}
+	if total > maxDots {
+		dots = append(dots, statusIndicatorStyle.Render(fmt.Sprintf(" +%d", total-maxDots)))
+	}
+	return strings.Join(dots, " ")
+}
+
+func formatTurnContent(turn ChatTurn) string {
+	var sb strings.Builder
+
+	// Human prompt
+	sb.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+	header := "  HUMAN #" + fmt.Sprintf("%d", turn.TurnNumber)
+	if turn.HumanTime != "" {
+		header += "  [" + turn.HumanTime + "]"
+	}
+	sb.WriteString(header + "\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+
+	humanText := turn.HumanText
+	if len(humanText) > 3000 {
+		humanText = humanText[:3000] + "\n\n  ... (truncated)"
+	}
+	sb.WriteString(humanText)
+	sb.WriteString("\n\n")
+
+	// Assistant response
+	if turn.AssistantText != "" {
+		sb.WriteString("┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n")
+		aHeader := "  CLAUDE"
+		if turn.AssistantTime != "" {
+			aHeader += "  [" + turn.AssistantTime + "]"
+		}
+		sb.WriteString(aHeader + "\n")
+		sb.WriteString("┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n\n")
+
+		assistantText := turn.AssistantText
+		if len(assistantText) > 5000 {
+			assistantText = assistantText[:5000] + "\n\n  ... (truncated)"
+		}
+		sb.WriteString(assistantText)
+	} else {
+		sb.WriteString("\n  (awaiting response...)")
+	}
+
+	return sb.String()
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -510,6 +657,7 @@ func renderDashboardFooter(m Model) string {
 	keys := []struct{ key, label string }{
 		{"\u2191\u2193", "navigate"},
 		{"\u21b5", "inspect"},
+		{"c", "replay"},
 		{"s", "stage"},
 		{"x", "kill"},
 		{"n", "new agent"},
@@ -528,12 +676,13 @@ func renderDashboardFooter(m Model) string {
 
 func renderIntelFooter(agent git.Agent) string {
 	keys := []struct{ key, label string }{
-		{"esc", "back"},
-		{"\u2191\u2193", "prev/next"},
+		{"\u2190", "back"},
+		{"\u2191\u2193", "scroll"},
+		{"\u2192", "replay"},
+		{"tab", "next agent"},
 		{"l", "logs"},
 		{"s", "stage"},
 		{"x", "kill"},
-		{"q", "quit"},
 	}
 
 	var parts []string

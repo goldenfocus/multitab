@@ -16,7 +16,8 @@ const (
 	viewDashboard viewMode = iota
 	viewIntel
 	viewSpawn
-	viewLog // scrollable log viewer
+	viewLog      // scrollable log viewer
+	viewPlayback // conversation replay — step through turns
 )
 
 // Model holds all TUI state.
@@ -41,6 +42,11 @@ type Model struct {
 	// Log viewer
 	viewport   viewport.Model
 	logContent string
+
+	// Playback (conversation replay)
+	chatTurns    []ChatTurn // parsed conversation turns
+	chatTurnIdx  int        // current turn being viewed
+	chatAgentIdx int        // which agent's chat we're viewing
 
 	// Push state
 	pushing     bool
@@ -79,6 +85,20 @@ type killResultMsg struct {
 type spawnResultMsg struct {
 	name string
 	err  error
+}
+
+// ChatTurn represents one human↔assistant exchange.
+type ChatTurn struct {
+	HumanText    string
+	HumanTime    string
+	AssistantText string
+	AssistantTime string
+	TurnNumber   int
+}
+
+type chatTurnsMsg struct {
+	turns []ChatTurn
+	err   error
 }
 
 // NewModel creates the initial model.

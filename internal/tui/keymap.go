@@ -3,7 +3,7 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/goldenfocus/multitab/internal/agent"
+	agentpkg "github.com/goldenfocus/multitab/internal/agent"
 	"github.com/goldenfocus/multitab/internal/git"
 )
 
@@ -16,6 +16,11 @@ func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	// Log view handles its own scrolling
 	if m.mode == viewLog {
 		return handleLogKeys(m, msg)
+	}
+
+	// Playback view handles turn navigation
+	if m.mode == viewPlayback {
+		return handlePlaybackKeys(m, msg)
 	}
 
 	// Global keys
@@ -62,9 +67,10 @@ func handleDashboardKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.cursor < agentCount-1 {
 			m.cursor++
 		}
-	case "enter":
+	case "enter", "right":
 		if agentCount > 0 {
 			m.mode = viewIntel
+			m = refreshIntelViewport(m)
 		}
 	case "s", "S":
 		// Stage: merge agent's branch into local main
@@ -79,6 +85,12 @@ func handleDashboardKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		if agentCount > 0 && m.state != nil {
 			a := m.state.Agents[m.cursor]
 			return m, killAgentCmd(m.repoRoot, a)
+		}
+	case "c", "C":
+		// Conversation playback from dashboard
+		if agentCount > 0 && m.state != nil {
+			m.chatAgentIdx = m.cursor
+			return m, fetchTurnsCmd(m.state.Agents[m.cursor].Path)
 		}
 	case "p", "P":
 		if !m.pushing && m.state != nil && len(m.state.StagedCommits) > 0 {
@@ -96,18 +108,35 @@ func handleDashboardKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func handleIntelKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc", "backspace", "left", "h":
+	case "esc", "backspace":
 		m.mode = viewDashboard
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
+		return m, nil
+	case "left":
+		m.mode = viewDashboard
+		return m, nil
+	case "right", "enter":
+		// Drill deeper — open conversation replay
+		if m.state != nil && m.cursor < len(m.state.Agents) {
+			m.chatAgentIdx = m.cursor
+			return m, fetchTurnsCmd(m.state.Agents[m.cursor].Path)
 		}
-	case "down", "j":
+		return m, nil
+	case "tab", "]":
+		// Next agent (stay in intel view)
 		if m.state != nil && m.cursor < len(m.state.Agents)-1 {
 			m.cursor++
+			m = refreshIntelViewport(m)
 		}
+		return m, nil
+	case "shift+tab", "[":
+		// Previous agent (stay in intel view)
+		if m.cursor > 0 {
+			m.cursor--
+			m = refreshIntelViewport(m)
+		}
+		return m, nil
 	case "l", "L", "o", "O":
-		// Jump into log view
+		// Jump into log view (raw .log file from spawned agents)
 		if m.state != nil && m.cursor < len(m.state.Agents) {
 			a := m.state.Agents[m.cursor]
 			m.mode = viewLog
@@ -117,6 +146,12 @@ func handleIntelKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 				fetchLogCmd(a.Path),
 				logRefreshTick(),
 			)
+		}
+	case "c", "C":
+		// Conversation playback from intel view
+		if m.state != nil && m.cursor < len(m.state.Agents) {
+			m.chatAgentIdx = m.cursor
+			return m, fetchTurnsCmd(m.state.Agents[m.cursor].Path)
 		}
 	case "s", "S":
 		// Stage: merge agent's branch into local main
@@ -132,8 +167,31 @@ func handleIntelKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			a := m.state.Agents[m.cursor]
 			return m, killAgentCmd(m.repoRoot, a)
 		}
+	case "g":
+		m.viewport.GotoTop()
+		return m, nil
+	case "G":
+		m.viewport.GotoBottom()
+		return m, nil
 	}
-	return m, nil
+
+	// Forward to viewport for scrolling (up/down/pgup/pgdn)
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+// refreshIntelViewport renders the intel panel content into the viewport.
+func refreshIntelViewport(m Model) Model {
+	if m.state == nil || m.cursor >= len(m.state.Agents) {
+		return m
+	}
+	agent := m.state.Agents[m.cursor]
+	content := renderIntelContent(agent, m.tick)
+	m.logContent = content
+	m.viewport = initViewport(content, m.width, m.height)
+	m.viewport.GotoTop()
+	return m
 }
 
 func handleLogKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -197,9 +255,95 @@ func killAgentCmd(repoRoot string, a git.Agent) tea.Cmd {
 	}
 }
 
+func handlePlaybackKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "backspace", "q":
+		m.mode = viewIntel
+		return m, nil
+	case "left", "h":
+		// Previous turn
+		if m.chatTurnIdx > 0 {
+			m.chatTurnIdx--
+			content := formatTurnContent(m.chatTurns[m.chatTurnIdx])
+			m.logContent = content
+			m.viewport.SetContent(content)
+			m.viewport.GotoTop()
+		}
+		return m, nil
+	case "right", "l":
+		// Next turn
+		if m.chatTurnIdx < len(m.chatTurns)-1 {
+			m.chatTurnIdx++
+			content := formatTurnContent(m.chatTurns[m.chatTurnIdx])
+			m.logContent = content
+			m.viewport.SetContent(content)
+			m.viewport.GotoTop()
+		}
+		return m, nil
+	case "g":
+		m.viewport.GotoTop()
+		return m, nil
+	case "G":
+		m.viewport.GotoBottom()
+		return m, nil
+	case "home":
+		// Jump to first turn
+		m.chatTurnIdx = 0
+		content := formatTurnContent(m.chatTurns[0])
+		m.logContent = content
+		m.viewport.SetContent(content)
+		m.viewport.GotoTop()
+		return m, nil
+	case "end":
+		// Jump to last turn
+		m.chatTurnIdx = len(m.chatTurns) - 1
+		content := formatTurnContent(m.chatTurns[m.chatTurnIdx])
+		m.logContent = content
+		m.viewport.SetContent(content)
+		m.viewport.GotoTop()
+		return m, nil
+	}
+
+	// Forward to viewport for scrolling (up/down/pgup/pgdn)
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+func fetchTurnsCmd(agentPath string) tea.Cmd {
+	return func() tea.Msg {
+		turns, err := agentpkg.ParseTurns(agentPath)
+		if err != nil || len(turns) == 0 {
+			return chatTurnsMsg{err: err}
+		}
+		// Convert agent turns to TUI turns
+		var chatTurns []ChatTurn
+		for _, t := range turns {
+			chatTurns = append(chatTurns, ChatTurn{
+				HumanText:     t.HumanText,
+				HumanTime:     t.HumanTime,
+				AssistantText: t.AssistantText,
+				AssistantTime: t.AssistantTime,
+				TurnNumber:    t.Number,
+			})
+		}
+		return chatTurnsMsg{turns: chatTurns}
+	}
+}
+
+func fetchChatCmd(agentPath string) tea.Cmd {
+	return func() tea.Msg {
+		content, err := agentpkg.ReadFullChat(agentPath)
+		if err != nil {
+			return logContentMsg{content: "(no conversation found)", err: nil}
+		}
+		return logContentMsg{content: content}
+	}
+}
+
 func spawnAgentCmd(repoRoot, prompt string) tea.Cmd {
 	return func() tea.Msg {
-		result := agent.Spawn(repoRoot, prompt)
+		result := agentpkg.Spawn(repoRoot, prompt)
 		if result.Err != nil {
 			return spawnResultMsg{name: result.Name, err: result.Err}
 		}

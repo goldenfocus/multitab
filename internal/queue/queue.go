@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"github.com/goldenfocus/multitab/internal/agent"
 	"github.com/goldenfocus/multitab/internal/detect"
 	"github.com/goldenfocus/multitab/internal/git"
 )
@@ -33,6 +34,13 @@ func Refresh(repoRoot string) (*State, error) {
 		if err := git.InspectAgent(repoRoot, &agents[i]); err != nil {
 			// Non-fatal: mark as idle with error
 			agents[i].Status = git.StatusIdle
+		}
+		// Fetch conversation info from Claude JSONL
+		if conv, err := agent.FindConversation(agents[i].Path); err == nil && conv != nil {
+			agents[i].LastPrompt = conv.LastPrompt
+			agents[i].LastPromptAt = conv.LastPromptAt
+			agents[i].HumanMsgCount = conv.MessageCount
+			agents[i].SessionID = conv.SessionID
 		}
 	}
 	state.Agents = agents

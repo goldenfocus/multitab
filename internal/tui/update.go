@@ -15,7 +15,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if m.mode == viewLog {
+		if m.mode == viewLog || m.mode == viewPlayback || m.mode == viewIntel {
 			m.viewport.Width = maxInt(m.width-8, 40)
 			m.viewport.Height = maxInt(m.height-10, 10)
 		}
@@ -26,6 +26,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		if m.state != nil && m.cursor >= len(m.state.Agents) {
 			m.cursor = max(0, len(m.state.Agents)-1)
+		}
+		// Refresh intel viewport content if we're in intel view
+		if m.mode == viewIntel {
+			m = refreshIntelViewport(m)
 		}
 		return m, nil
 
@@ -95,6 +99,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.viewport.SetContent(m.logContent)
 		m.viewport.GotoBottom()
+		return m, nil
+
+	case chatTurnsMsg:
+		if msg.err != nil || len(msg.turns) == 0 {
+			// No conversation JSONL found — show in log view with helpful message
+			m.mode = viewLog
+			m.logContent = "No conversation history found for this agent.\n\n" +
+				"This agent may have been created manually (not via Claude Code),\n" +
+				"or the session JSONL has been cleaned up.\n\n" +
+				"Press [esc] to go back."
+			m.viewport = initViewport(m.logContent, m.width, m.height)
+			return m, nil
+		}
+		m.chatTurns = msg.turns
+		m.chatTurnIdx = len(msg.turns) - 1 // start at the LAST turn (most recent)
+		m.mode = viewPlayback
+		content := formatTurnContent(m.chatTurns[m.chatTurnIdx])
+		m.logContent = content
+		m.viewport = initViewport(content, m.width, m.height)
+		m.viewport.GotoTop()
 		return m, nil
 
 	case logRefreshTickMsg:
