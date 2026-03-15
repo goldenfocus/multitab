@@ -90,9 +90,9 @@ func (m Model) renderDashboardView() string {
 	dashContent := strings.Join(sections, "\n")
 
 	// ── Wide layout: dashboard + chat side by side ──
-	if m.width >= 120 {
-		leftWidth := clampInt(m.width*45/100, 50, 80)
-		rightWidth := m.width - leftWidth - 4
+	if m.width >= 100 {
+		leftWidth := clampInt(m.width*50/100, 50, 80)
+		rightWidth := m.width - leftWidth - 3
 
 		left := frameBorder.Width(leftWidth).Render(dashContent)
 		right := m.renderChatPanel(rightWidth)
