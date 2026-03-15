@@ -21,7 +21,6 @@ const (
 	viewSpawn
 	viewLog      // scrollable log viewer
 	viewPlayback // conversation replay — step through turns
-	viewChat     // commander chat interface
 )
 
 // Model holds all TUI state.
@@ -62,6 +61,7 @@ type Model struct {
 	spinFrame   int
 
 	// Commander chat
+	chatFocused   bool // true = typing in chat, false = dashboard shortcuts active
 	chatInput     textinput.Model
 	chatHistory   []commander.Message
 	chatStreaming  bool

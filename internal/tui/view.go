@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/goldenfocus/multitab/internal/git"
 )
 
@@ -35,8 +36,6 @@ func (m Model) View() string {
 		return renderLogView(m)
 	case viewPlayback:
 		return m.renderPlaybackView()
-	case viewChat:
-		return m.renderChatView()
 	default:
 		return m.renderDashboardView()
 	}
@@ -47,6 +46,7 @@ func (m Model) View() string {
 // ─────────────────────────────────────────────────
 
 func (m Model) renderDashboardView() string {
+	// ── Left panel: agent dashboard ──
 	var sections []string
 
 	sections = append(sections, renderBanner(m.tick))
@@ -87,12 +87,116 @@ func (m Model) renderDashboardView() string {
 	sections = append(sections, renderStatusBar(m))
 	sections = append(sections, renderDashboardFooter(m))
 
-	content := strings.Join(sections, "\n")
+	dashContent := strings.Join(sections, "\n")
+
+	// ── Wide layout: dashboard + chat side by side ──
+	if m.width >= 120 {
+		leftWidth := clampInt(m.width*45/100, 50, 80)
+		rightWidth := m.width - leftWidth - 4
+
+		left := frameBorder.Width(leftWidth).Render(dashContent)
+		right := m.renderChatPanel(rightWidth)
+
+		return lipgloss.JoinHorizontal(lipgloss.Top, left, " ", right)
+	}
+
+	// ── Narrow layout: dashboard only ──
 	if m.width > 60 {
 		maxWidth := clampInt(m.width-4, 60, 80)
-		return frameBorder.Width(maxWidth).Render(content)
+		return frameBorder.Width(maxWidth).Render(dashContent)
 	}
-	return content
+	return dashContent
+}
+
+// ─────────────────────────────────────────────────
+// Chat panel (right side of split layout)
+// ─────────────────────────────────────────────────
+
+func (m Model) renderChatPanel(width int) string {
+	innerWidth := width - 4
+
+	var sections []string
+
+	// Chat header
+	sections = append(sections, renderChatPanelHeader(m.tick))
+
+	// Chat messages
+	chatContent := renderChatMessages(m.chatHistory, m.chatStreamBuf, m.chatStreaming, innerWidth, m.tick)
+	// Use a fixed-height panel that fills available space
+	chatHeight := maxInt(m.height-12, 8)
+	chatPanel := lipgloss.NewStyle().
+		Width(innerWidth).
+		Height(chatHeight).
+		Render(chatContent)
+	// Only show the tail (most recent messages)
+	chatLines := strings.Split(chatPanel, "\n")
+	if len(chatLines) > chatHeight {
+		chatLines = chatLines[len(chatLines)-chatHeight:]
+	}
+	sections = append(sections, panelStyle.Width(innerWidth).Render(strings.Join(chatLines, "\n")))
+
+	// Voice indicator
+	sections = append(sections, renderVoiceIndicator(m.voice, m.speaking, m.tick))
+
+	// Input box
+	var inputLines []string
+	inputLines = append(inputLines, "")
+	if m.chatStreaming {
+		spinner := spinnerFrames[m.tick%len(spinnerFrames)]
+		inputLines = append(inputLines, "  "+pushStepActiveStyle.Render(spinner+" commander is thinking..."))
+	} else {
+		inputLines = append(inputLines, "  "+chatPromptStyle.Render("▸")+" "+m.chatInput.View())
+	}
+	inputLines = append(inputLines, "")
+
+	inputBorder := panelStyle
+	if m.chatFocused {
+		inputBorder = panelActiveStyle
+	}
+	sections = append(sections, inputBorder.Width(innerWidth).Render(strings.Join(inputLines, "\n")))
+
+	// Chat footer
+	sections = append(sections, renderChatPanelFooter(m))
+
+	content := strings.Join(sections, "\n")
+
+	// Use the hull border for the chat panel too
+	chatBorderStyle := frameBorder.Copy().BorderForeground(lipgloss.Color("#334155"))
+	if m.chatFocused {
+		chatBorderStyle = chatBorderStyle.BorderForeground(cyan)
+	}
+	return chatBorderStyle.Width(width).Render(content)
+}
+
+func renderChatPanelHeader(tick int) string {
+	title := chatCmdLabelStyle.Render(" COMMANDER ")
+	sub := subtitleStyle.Render("  mission control AI")
+	scan := dimSeparatorStyle.Render("  " + strings.Repeat("━", 40))
+	return fmt.Sprintf("  %s\n%s\n%s", title, sub, scan)
+}
+
+func renderChatPanelFooter(m Model) string {
+	var keys []struct{ key, label string }
+	if m.chatFocused {
+		keys = []struct{ key, label string }{
+			{"esc", "dashboard"},
+			{"enter", "send"},
+			{"ctrl+v", m.voice.String()},
+		}
+		if m.voice == voiceManual {
+			keys = append(keys, struct{ key, label string }{"ctrl+p", "play"})
+		}
+	} else {
+		keys = []struct{ key, label string }{
+			{"/", "chat"},
+		}
+	}
+
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, footerKeyStyle.Render(k.key)+" "+footerStyle.Render(k.label))
+	}
+	return "\n  " + strings.Join(parts, "  ")
 }
 
 // ─────────────────────────────────────────────────

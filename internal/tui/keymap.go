@@ -9,8 +9,8 @@ import (
 )
 
 func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
-	// Chat mode owns all input
-	if m.mode == viewChat {
+	// Chat panel focused on dashboard — route to chat handler
+	if m.chatFocused && m.mode == viewDashboard {
 		return handleChatKeys(m, msg)
 	}
 
@@ -46,11 +46,8 @@ func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.spawnOk = ""
 		return m, textinput.Blink
 	case "/":
-		m.mode = viewChat
+		m.chatFocused = true
 		m.chatInput.Focus()
-		m.chatInput.SetValue("")
-		// Initialize viewport for chat history
-		m.viewport = initViewport("", m.width, m.height)
 		return m, textinput.Blink
 	}
 

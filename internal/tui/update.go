@@ -16,7 +16,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if m.mode == viewLog || m.mode == viewPlayback || m.mode == viewIntel || m.mode == viewChat {
+		if m.mode == viewLog || m.mode == viewPlayback || m.mode == viewIntel {
 			m.viewport.Width = maxInt(m.width-8, 40)
 			m.viewport.Height = maxInt(m.height-10, 10)
 		}
@@ -149,12 +149,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case chatChunkMsg:
 		m.chatStreamBuf += msg.text
-		// Auto-scroll viewport to bottom
-		if m.mode == viewChat {
-			chatContent := renderChatMessages(m.chatHistory, m.chatStreamBuf, m.chatStreaming, maxInt(m.width-14, 40), m.tick)
-			m.viewport.SetContent(chatContent)
-			m.viewport.GotoBottom()
-		}
+		// Chat panel renders directly from chatStreamBuf — no viewport needed
 		return m, readChatChunkCmd(m.chatReader)
 
 	case chatStreamDoneMsg:
@@ -172,12 +167,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chatProc = nil
 		}
 		m.chatReader = nil
-		// Update viewport
-		if m.mode == viewChat {
-			chatContent := renderChatMessages(m.chatHistory, "", false, maxInt(m.width-14, 40), m.tick)
-			m.viewport.SetContent(chatContent)
-			m.viewport.GotoBottom()
-		}
+		// No viewport to update — chat panel renders directly from chatHistory
 		// Auto-speak if voice mode is AUTO
 		responseBuf := m.chatStreamBuf
 		m.chatStreamBuf = ""
@@ -209,7 +199,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case chatTickMsg:
 		// Fast tick for streaming cursor animation
-		if m.mode == viewChat && m.chatStreaming {
+		if m.chatStreaming {
 			return m, chatTickCmd()
 		}
 		return m, nil
@@ -226,13 +216,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.mode == viewLog {
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
-		return m, cmd
-	}
-
-	// Forward to chat input in chat mode
-	if m.mode == viewChat {
-		var cmd tea.Cmd
-		m.chatInput, cmd = m.chatInput.Update(msg)
 		return m, cmd
 	}
 

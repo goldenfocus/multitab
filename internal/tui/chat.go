@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"io"
 	"os/exec"
 	"strings"
@@ -112,7 +111,7 @@ func handleChatKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	switch key {
 	case "esc":
-		// Stop any streaming/speaking and return to dashboard
+		// Unfocus chat — return keyboard to dashboard shortcuts
 		if m.chatProc != nil {
 			m.chatProc.Process.Kill()
 			m.chatProc.Wait()
@@ -125,7 +124,7 @@ func handleChatKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.speaking = false
 		}
 		m.chatStreaming = false
-		m.mode = viewDashboard
+		m.chatFocused = false
 		m.chatInput.Blur()
 		return m, nil
 
@@ -194,59 +193,8 @@ func handleChatKeys(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 // ─────────────────────────────────────────────────
-// Chat view rendering
+// Chat message rendering (used by renderChatPanel in view.go)
 // ─────────────────────────────────────────────────
-
-func (m Model) renderChatView() string {
-	var sections []string
-
-	maxWidth := clampInt(m.width-4, 60, 80)
-	innerWidth := maxWidth - 6
-
-	// Header
-	sections = append(sections, renderChatHeader(m.tick))
-
-	// Chat history panel (scrollable viewport)
-	chatContent := renderChatMessages(m.chatHistory, m.chatStreamBuf, m.chatStreaming, innerWidth, m.tick)
-	m.viewport.SetContent(chatContent)
-	sections = append(sections, "\n"+panelStyle.Width(innerWidth).Render(m.viewport.View()))
-
-	// Voice status indicator
-	voiceIndicator := renderVoiceIndicator(m.voice, m.speaking, m.tick)
-	sections = append(sections, voiceIndicator)
-
-	// Input panel
-	var inputLines []string
-	inputLines = append(inputLines, "")
-	if m.chatStreaming {
-		spinner := spinnerFrames[m.tick%len(spinnerFrames)]
-		inputLines = append(inputLines, "  "+pushStepActiveStyle.Render(spinner+" commander is thinking..."))
-	} else {
-		inputLines = append(inputLines, "  "+chatPromptStyle.Render("▸")+" "+m.chatInput.View())
-	}
-	inputLines = append(inputLines, "")
-	sections = append(sections, panelActiveStyle.Width(innerWidth).Render(strings.Join(inputLines, "\n")))
-
-	// Footer
-	sections = append(sections, renderChatFooter(m))
-
-	content := strings.Join(sections, "\n")
-	if m.width > 60 {
-		return frameBorder.Width(maxWidth).Render(content)
-	}
-	return content
-}
-
-func renderChatHeader(tick int) string {
-	frames := []string{"◆◇◆", "◇◆◇", "◆◆◇", "◇◇◆"}
-	accent := bannerAccentStyle.Render(frames[tick%len(frames)])
-
-	title := bannerStyle.Render(" COMMANDER ")
-	sub := subtitleStyle.Render("  mission control AI")
-	scan := dimSeparatorStyle.Render("  " + strings.Repeat("━", 58))
-
-	return fmt.Sprintf("  %s%s%s\n%s\n%s", accent, title, accent, sub, scan)
-}
 
 func renderChatMessages(history []commander.Message, streamBuf string, streaming bool, width, tick int) string {
 	if len(history) == 0 && streamBuf == "" {
@@ -319,24 +267,6 @@ func renderVoiceIndicator(voice voiceMode, speaking bool, tick int) string {
 		indicator = "🔇 voice: OFF"
 	}
 	return "  " + statusIndicatorStyle.Render(indicator)
-}
-
-func renderChatFooter(m Model) string {
-	keys := []struct{ key, label string }{
-		{"esc", "back"},
-		{"enter", "send"},
-		{"ctrl+v", "voice: " + m.voice.String()},
-	}
-	if m.voice == voiceManual {
-		keys = append(keys, struct{ key, label string }{"ctrl+p", "play"})
-	}
-	keys = append(keys, struct{ key, label string }{"ctrl+l", "clear"})
-
-	var parts []string
-	for _, k := range keys {
-		parts = append(parts, footerKeyStyle.Render(k.key)+" "+footerStyle.Render(k.label))
-	}
-	return "\n  " + strings.Join(parts, "  ")
 }
 
 // wordWrap breaks text into lines of at most maxWidth characters.
