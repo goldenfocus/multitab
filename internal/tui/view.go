@@ -91,13 +91,44 @@ func (m Model) renderDashboardView() string {
 
 	// ── Wide layout: dashboard + chat side by side ──
 	if m.width >= 100 {
-		leftWidth := clampInt(m.width*50/100, 50, 80)
-		rightWidth := m.width - leftWidth - 3
+		leftWidth := clampInt(m.width/2-2, 50, 80)
+		rightWidth := m.width - leftWidth - 5 // gap + borders
 
-		left := frameBorder.Width(leftWidth).Render(dashContent)
-		right := m.renderChatPanel(rightWidth)
+		leftPanel := frameBorder.Width(leftWidth).Render(dashContent)
+		rightPanel := m.renderChatPanel(rightWidth)
 
-		return lipgloss.JoinHorizontal(lipgloss.Top, left, " ", right)
+		// Manual side-by-side: split into lines, pad, concatenate
+		leftLines := strings.Split(leftPanel, "\n")
+		rightLines := strings.Split(rightPanel, "\n")
+
+		// Pad to same height
+		maxLines := maxInt(len(leftLines), len(rightLines))
+		for len(leftLines) < maxLines {
+			leftLines = append(leftLines, "")
+		}
+		for len(rightLines) < maxLines {
+			rightLines = append(rightLines, "")
+		}
+
+		// Measure the rendered left panel width (ANSI-aware)
+		leftRenderedWidth := 0
+		for _, l := range leftLines {
+			w := lipgloss.Width(l)
+			if w > leftRenderedWidth {
+				leftRenderedWidth = w
+			}
+		}
+
+		var combined []string
+		for i := 0; i < maxLines; i++ {
+			lw := lipgloss.Width(leftLines[i])
+			pad := ""
+			if lw < leftRenderedWidth {
+				pad = strings.Repeat(" ", leftRenderedWidth-lw)
+			}
+			combined = append(combined, leftLines[i]+pad+"  "+rightLines[i])
+		}
+		return strings.Join(combined, "\n")
 	}
 
 	// ── Narrow layout: dashboard only ──
@@ -109,70 +140,56 @@ func (m Model) renderDashboardView() string {
 }
 
 // ─────────────────────────────────────────────────
-// Chat panel (right side of split layout)
+// Chat panel (right side — no hull border, clean text)
 // ─────────────────────────────────────────────────
 
 func (m Model) renderChatPanel(width int) string {
-	innerWidth := width - 4
-
 	var sections []string
 
-	// Chat header
-	sections = append(sections, renderChatPanelHeader(m.tick))
+	// Header
+	sections = append(sections, "")
+	sections = append(sections, chatCmdLabelStyle.Render("  COMMANDER"))
+	sections = append(sections, subtitleStyle.Render("  mission control AI"))
+	sections = append(sections, dimSeparatorStyle.Render("  "+strings.Repeat("━", min(width-4, 50))))
 
-	// Chat messages
-	chatContent := renderChatMessages(m.chatHistory, m.chatStreamBuf, m.chatStreaming, innerWidth, m.tick)
-	// Use a fixed-height panel that fills available space
-	chatHeight := maxInt(m.height-12, 8)
-	chatPanel := lipgloss.NewStyle().
-		Width(innerWidth).
-		Height(chatHeight).
-		Render(chatContent)
-	// Only show the tail (most recent messages)
-	chatLines := strings.Split(chatPanel, "\n")
+	// Chat messages — render directly, take the tail for auto-scroll
+	chatContent := renderChatMessages(m.chatHistory, m.chatStreamBuf, m.chatStreaming, width-2, m.tick)
+	chatLines := strings.Split(chatContent, "\n")
+
+	// Calculate available height for messages
+	// Reserve: header(4) + voice(1) + input(3) + footer(2) = 10 lines
+	chatHeight := maxInt(m.height-10, 6)
 	if len(chatLines) > chatHeight {
 		chatLines = chatLines[len(chatLines)-chatHeight:]
 	}
-	sections = append(sections, panelStyle.Width(innerWidth).Render(strings.Join(chatLines, "\n")))
+	// Pad short content to push input to bottom
+	for len(chatLines) < chatHeight {
+		chatLines = append(chatLines, "")
+	}
+	sections = append(sections, strings.Join(chatLines, "\n"))
 
 	// Voice indicator
 	sections = append(sections, renderVoiceIndicator(m.voice, m.speaking, m.tick))
 
 	// Input box
-	var inputLines []string
-	inputLines = append(inputLines, "")
+	var inputContent string
 	if m.chatStreaming {
 		spinner := spinnerFrames[m.tick%len(spinnerFrames)]
-		inputLines = append(inputLines, "  "+pushStepActiveStyle.Render(spinner+" commander is thinking..."))
+		inputContent = "\n  " + pushStepActiveStyle.Render(spinner+" commander is thinking...") + "\n"
 	} else {
-		inputLines = append(inputLines, "  "+chatPromptStyle.Render("▸")+" "+m.chatInput.View())
+		inputContent = "\n  " + chatPromptStyle.Render("▸") + " " + m.chatInput.View() + "\n"
 	}
-	inputLines = append(inputLines, "")
 
 	inputBorder := panelStyle
 	if m.chatFocused {
 		inputBorder = panelActiveStyle
 	}
-	sections = append(sections, inputBorder.Width(innerWidth).Render(strings.Join(inputLines, "\n")))
+	sections = append(sections, inputBorder.Width(width-2).Render(inputContent))
 
-	// Chat footer
+	// Footer
 	sections = append(sections, renderChatPanelFooter(m))
 
-	content := strings.Join(sections, "\n")
-
-	// Use the hull border for the chat panel too
-	chatBorderStyle := frameBorder.Copy().BorderForeground(lipgloss.Color("#334155"))
-	if m.chatFocused {
-		chatBorderStyle = chatBorderStyle.BorderForeground(cyan)
-	}
-	return chatBorderStyle.Width(width).Render(content)
-}
-
-func renderChatPanelHeader(tick int) string {
-	title := chatCmdLabelStyle.Render(" COMMANDER ")
-	sub := subtitleStyle.Render("  mission control AI")
-	scan := dimSeparatorStyle.Render("  " + strings.Repeat("━", 40))
-	return fmt.Sprintf("  %s\n%s\n%s", title, sub, scan)
+	return strings.Join(sections, "\n")
 }
 
 func renderChatPanelFooter(m Model) string {
@@ -196,7 +213,7 @@ func renderChatPanelFooter(m Model) string {
 	for _, k := range keys {
 		parts = append(parts, footerKeyStyle.Render(k.key)+" "+footerStyle.Render(k.label))
 	}
-	return "\n  " + strings.Join(parts, "  ")
+	return "  " + strings.Join(parts, "  ")
 }
 
 // ─────────────────────────────────────────────────

@@ -95,9 +95,6 @@ func StartStream(repoRoot, prompt string) (io.ReadCloser, *exec.Cmd, error) {
 		return nil, nil, fmt.Errorf("stdout pipe: %w", err)
 	}
 
-	// Merge stderr into stdout so we catch errors too
-	cmd.Stderr = cmd.Stdout
-
 	if err := cmd.Start(); err != nil {
 		return nil, nil, fmt.Errorf("start claude: %w", err)
 	}
