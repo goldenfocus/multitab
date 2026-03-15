@@ -1,6 +1,8 @@
 package queue
 
 import (
+	"sync"
+
 	"github.com/goldenfocus/multitab/internal/agent"
 	"github.com/goldenfocus/multitab/internal/detect"
 	"github.com/goldenfocus/multitab/internal/git"
@@ -29,20 +31,24 @@ func Refresh(repoRoot string) (*State, error) {
 		return nil, err
 	}
 
-	// Inspect each agent
+	// Inspect all agents in parallel
+	var wg sync.WaitGroup
 	for i := range agents {
-		if err := git.InspectAgent(repoRoot, &agents[i]); err != nil {
-			// Non-fatal: mark as idle with error
-			agents[i].Status = git.StatusIdle
-		}
-		// Fetch conversation info from Claude JSONL
-		if conv, err := agent.FindConversation(agents[i].Path); err == nil && conv != nil {
-			agents[i].LastPrompt = conv.LastPrompt
-			agents[i].LastPromptAt = conv.LastPromptAt
-			agents[i].HumanMsgCount = conv.MessageCount
-			agents[i].SessionID = conv.SessionID
-		}
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			if err := git.InspectAgent(repoRoot, &agents[idx]); err != nil {
+				agents[idx].Status = git.StatusIdle
+			}
+			if conv, err := agent.FindConversation(agents[idx].Path); err == nil && conv != nil {
+				agents[idx].LastPrompt = conv.LastPrompt
+				agents[idx].LastPromptAt = conv.LastPromptAt
+				agents[idx].HumanMsgCount = conv.MessageCount
+				agents[idx].SessionID = conv.SessionID
+			}
+		}(i)
 	}
+	wg.Wait()
 	state.Agents = agents
 
 	// Count ready vs total
