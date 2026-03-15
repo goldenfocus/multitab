@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goldenfocus/multitab/internal/commander"
 )
 
 // Update handles all events and returns the new model + commands.
@@ -15,7 +16,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if m.mode == viewLog || m.mode == viewPlayback || m.mode == viewIntel {
+		if m.mode == viewLog || m.mode == viewPlayback || m.mode == viewIntel || m.mode == viewChat {
 			m.viewport.Width = maxInt(m.width-8, 40)
 			m.viewport.Height = maxInt(m.height-10, 10)
 		}
@@ -139,6 +140,79 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 		return m, nil
+
+	// ── Commander chat messages ──────────────────
+	case chatStreamStartMsg:
+		m.chatReader = msg.reader
+		m.chatProc = msg.proc
+		return m, readChatChunkCmd(m.chatReader)
+
+	case chatChunkMsg:
+		m.chatStreamBuf += msg.text
+		// Auto-scroll viewport to bottom
+		if m.mode == viewChat {
+			chatContent := renderChatMessages(m.chatHistory, m.chatStreamBuf, m.chatStreaming, maxInt(m.width-14, 40), m.tick)
+			m.viewport.SetContent(chatContent)
+			m.viewport.GotoBottom()
+		}
+		return m, readChatChunkCmd(m.chatReader)
+
+	case chatStreamDoneMsg:
+		m.chatStreaming = false
+		// Save commander response to history
+		if m.chatStreamBuf != "" {
+			m.chatHistory = append(m.chatHistory, commander.Message{
+				Role:    "commander",
+				Content: m.chatStreamBuf,
+			})
+		}
+		// Clean up process
+		if m.chatProc != nil {
+			m.chatProc.Wait()
+			m.chatProc = nil
+		}
+		m.chatReader = nil
+		// Update viewport
+		if m.mode == viewChat {
+			chatContent := renderChatMessages(m.chatHistory, "", false, maxInt(m.width-14, 40), m.tick)
+			m.viewport.SetContent(chatContent)
+			m.viewport.GotoBottom()
+		}
+		// Auto-speak if voice mode is AUTO
+		responseBuf := m.chatStreamBuf
+		m.chatStreamBuf = ""
+		if m.voice == voiceAuto && responseBuf != "" {
+			m.speaking = true
+			return m, speakCmd(responseBuf, m.voiceID)
+		}
+		return m, nil
+
+	case chatStreamErrMsg:
+		m.chatStreaming = false
+		m.chatStreamBuf = ""
+		m.chatHistory = append(m.chatHistory, commander.Message{
+			Role:    "commander",
+			Content: fmt.Sprintf("Error: %v", msg.err),
+		})
+		if m.chatProc != nil {
+			m.chatProc.Process.Kill()
+			m.chatProc.Wait()
+			m.chatProc = nil
+		}
+		m.chatReader = nil
+		return m, nil
+
+	case chatSpeakDoneMsg:
+		m.speaking = false
+		m.sayProc = nil
+		return m, nil
+
+	case chatTickMsg:
+		// Fast tick for streaming cursor animation
+		if m.mode == viewChat && m.chatStreaming {
+			return m, chatTickCmd()
+		}
+		return m, nil
 	}
 
 	// Forward to textinput in spawn mode
@@ -152,6 +226,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.mode == viewLog {
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
+	}
+
+	// Forward to chat input in chat mode
+	if m.mode == viewChat {
+		var cmd tea.Cmd
+		m.chatInput, cmd = m.chatInput.Update(msg)
 		return m, cmd
 	}
 

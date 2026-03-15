@@ -35,6 +35,8 @@ func (m Model) View() string {
 		return renderLogView(m)
 	case viewPlayback:
 		return m.renderPlaybackView()
+	case viewChat:
+		return m.renderChatView()
 	default:
 		return m.renderDashboardView()
 	}
@@ -760,6 +762,7 @@ func renderDashboardFooter(m Model) string {
 	keys := []struct{ key, label string }{
 		{"↑↓", "navigate"},
 		{"⏎", "inspect"},
+		{"/", "commander"},
 		{"c", "replay"},
 		{"s", "stage"},
 		{"x", "kill"},

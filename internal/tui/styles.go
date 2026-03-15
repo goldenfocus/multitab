@@ -213,4 +213,27 @@ var (
 
 	queueShimmerStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#3a4a5a"))
+
+	// ── Chat / Commander ───────────────────────
+	chatPromptStyle = lipgloss.NewStyle().
+			Foreground(cyan).
+			Bold(true)
+
+	chatUserLabelStyle = lipgloss.NewStyle().
+				Foreground(pink).
+				Bold(true)
+
+	chatUserStyle = lipgloss.NewStyle().
+			Foreground(softWhite)
+
+	chatCmdLabelStyle = lipgloss.NewStyle().
+				Foreground(cyan).
+				Bold(true)
+
+	chatCmdStyle = lipgloss.NewStyle().
+			Foreground(lightGray)
+
+	chatSystemStyle = lipgloss.NewStyle().
+			Foreground(midGray).
+			Italic(true)
 )

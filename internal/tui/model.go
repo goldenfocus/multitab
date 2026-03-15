@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"io"
+	"os/exec"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goldenfocus/multitab/internal/commander"
 	"github.com/goldenfocus/multitab/internal/queue"
 )
 
@@ -18,6 +21,7 @@ const (
 	viewSpawn
 	viewLog      // scrollable log viewer
 	viewPlayback // conversation replay — step through turns
+	viewChat     // commander chat interface
 )
 
 // Model holds all TUI state.
@@ -56,6 +60,18 @@ type Model struct {
 	pushDone    bool
 	pushElapsed time.Duration
 	spinFrame   int
+
+	// Commander chat
+	chatInput     textinput.Model
+	chatHistory   []commander.Message
+	chatStreaming  bool
+	chatStreamBuf string
+	chatReader    io.ReadCloser
+	chatProc      *exec.Cmd
+	voice         voiceMode
+	voiceID       string // macOS voice name
+	speaking      bool
+	sayProc       *exec.Cmd
 
 	// Ambient animation
 	tick int
@@ -109,11 +125,19 @@ func NewModel(repoRoot, buildCmd string) Model {
 	ti.CharLimit = 500
 	ti.Width = 56
 
+	ci := textinput.New()
+	ci.Placeholder = "talk to commander..."
+	ci.CharLimit = 1000
+	ci.Width = 56
+
 	return Model{
 		repoRoot:    repoRoot,
 		buildCmd:    buildCmd,
 		mode:        viewDashboard,
 		promptInput: ti,
+		chatInput:   ci,
+		voice:       voiceManual,
+		voiceID:     "Samantha",
 	}
 }
 

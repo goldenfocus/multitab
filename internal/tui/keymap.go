@@ -9,6 +9,11 @@ import (
 )
 
 func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
+	// Chat mode owns all input
+	if m.mode == viewChat {
+		return handleChatKeys(m, msg)
+	}
+
 	// Spawn mode handles its own input
 	if m.mode == viewSpawn {
 		return handleSpawnKeys(m, msg)
@@ -39,6 +44,13 @@ func handleKeypress(m Model, msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.promptInput.SetValue("")
 		m.spawnErr = nil
 		m.spawnOk = ""
+		return m, textinput.Blink
+	case "/":
+		m.mode = viewChat
+		m.chatInput.Focus()
+		m.chatInput.SetValue("")
+		// Initialize viewport for chat history
+		m.viewport = initViewport("", m.width, m.height)
 		return m, textinput.Blink
 	}
 
